@@ -1,11 +1,15 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Switch } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { ScreenContainer } from '@/components/screen-container';
+import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { BlurView } from 'expo-blur';
+import { useState } from 'react';
 
 export default function AccountScreen() {
-  const iconColor = useThemeColor({}, 'icon');
+  const colorScheme = useColorScheme() ?? 'light';
+  const isDark = colorScheme === 'dark';
+  const [darkMode, setDarkMode] = useState(isDark);
 
   const menuItems = [
     { icon: 'person.circle.fill' as const, label: 'Edit Profile', chevron: true },
@@ -13,78 +17,93 @@ export default function AccountScreen() {
     { icon: 'clock.fill' as const, label: 'Call History', chevron: true },
     { icon: 'gearshape.fill' as const, label: 'Settings', chevron: true },
     { icon: 'questionmark.circle.fill' as const, label: 'Help & Support', chevron: true },
-    { icon: 'arrow.right.square.fill' as const, label: 'Sign Out', chevron: false },
   ];
 
   return (
-    <ScreenContainer>
-      <View style={styles.profileSection}>
-        <View style={styles.profileAvatar}>
-          <ThemedText style={styles.profileInitial}>JD</ThemedText>
+    <ThemedView style={styles.container}>
+      <View style={[styles.decorativeBlur, styles.blur1, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]} />
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <ThemedText type="title">Account</ThemedText>
         </View>
-        <ThemedText type="title" style={styles.profileName}>John Doe</ThemedText>
-        <ThemedText style={styles.profilePhone}>+1 (555) 123-4567</ThemedText>
-        <View style={styles.balanceCard}>
+
+        <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.profileCard}>
+          <View style={[styles.profileAvatar, { backgroundColor: '#8B5CF6' }]}>
+            <ThemedText style={styles.profileInitial}>JD</ThemedText>
+          </View>
+          <ThemedText type="title" style={styles.profileName}>John Doe</ThemedText>
+          <ThemedText style={styles.profilePhone}>+1 (555) 123-4567</ThemedText>
+        </BlurView>
+
+        <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.balanceCard}>
           <ThemedText style={styles.balanceLabel}>Account Balance</ThemedText>
           <ThemedText type="title" style={styles.balanceAmount}>$25.50</ThemedText>
           <TouchableOpacity style={styles.topUpButton}>
             <ThemedText style={styles.topUpText}>Top Up</ThemedText>
           </TouchableOpacity>
-        </View>
-      </View>
+        </BlurView>
 
-      <View style={styles.menuSection}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity key={index} style={styles.menuItem}>
-            <IconSymbol name={item.icon} size={24} color={iconColor} />
-            <ThemedText style={styles.menuLabel}>{item.label}</ThemedText>
-            {item.chevron && (
-              <IconSymbol name="chevron.right" size={20} color={iconColor} />
-            )}
-          </TouchableOpacity>
-        ))}
-      </View>
-    </ScreenContainer>
+        <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.themeCard}>
+          <View style={styles.themeToggle}>
+            <View style={styles.themeInfo}>
+              <IconSymbol name={isDark ? 'moon.fill' : 'sun.max.fill'} size={24} color={isDark ? '#F1F5F9' : '#111827'} />
+              <ThemedText type="defaultSemiBold">Dark Mode</ThemedText>
+            </View>
+            <Switch
+              value={darkMode}
+              onValueChange={setDarkMode}
+              trackColor={{ false: '#D1D5DB', true: '#10B981' }}
+              thumbColor="#fff"
+            />
+          </View>
+        </BlurView>
+
+        <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.menuCard}>
+          {menuItems.map((item, index) => (
+            <TouchableOpacity key={index} style={[styles.menuItem, index !== menuItems.length - 1 && styles.menuBorder]}>
+              <IconSymbol name={item.icon} size={24} color={isDark ? '#94A3B8' : '#6B7280'} />
+              <ThemedText style={styles.menuLabel}>{item.label}</ThemedText>
+              {item.chevron && (
+                <IconSymbol name="chevron.right" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </BlurView>
+
+        <TouchableOpacity style={styles.signOutButton}>
+          <IconSymbol name="arrow.right.square.fill" size={20} color="#EF4444" />
+          <ThemedText style={styles.signOutText}>Sign Out</ThemedText>
+        </TouchableOpacity>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  profileSection: { alignItems: 'center', marginBottom: 30 },
-  profileAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
+  container: { flex: 1, paddingTop: 60 },
+  decorativeBlur: { position: 'absolute', width: 280, height: 280, borderRadius: 200, top: -100, right: -80, opacity: 0.6 },
+  blur1: {},
+  header: { paddingHorizontal: 20, marginBottom: 24 },
+  profileCard: { marginHorizontal: 20, borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
+  profileAvatar: { width: 80, height: 80, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   profileInitial: { color: '#fff', fontSize: 32, fontWeight: '600' },
   profileName: { marginBottom: 4 },
-  profilePhone: { fontSize: 16, opacity: 0.6, marginBottom: 20 },
-  balanceCard: {
-    backgroundColor: '#F0F0F0',
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    width: '100%',
-    marginTop: 10,
-  },
-  balanceLabel: { fontSize: 14, opacity: 0.6, marginBottom: 8 },
-  balanceAmount: { marginBottom: 12 },
-  topUpButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  topUpText: { color: '#fff', fontWeight: '600' },
-  menuSection: { gap: 4 },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    gap: 12,
-  },
+  profilePhone: { fontSize: 14, opacity: 0.6 },
+  balanceCard: { marginHorizontal: 20, borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
+  balanceLabel: { fontSize: 12, opacity: 0.6, marginBottom: 8, letterSpacing: 1 },
+  balanceAmount: { marginBottom: 16, fontSize: 36 },
+  topUpButton: { backgroundColor: '#10B981', paddingHorizontal: 32, paddingVertical: 12, borderRadius: 16 },
+  topUpText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  themeCard: { marginHorizontal: 20, borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
+  themeToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  themeInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  menuCard: { marginHorizontal: 20, borderRadius: 24, padding: 8, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 12, gap: 12 },
+  menuBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
   menuLabel: { flex: 1, fontSize: 16 },
+  signOutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginHorizontal: 20, paddingVertical: 16, borderRadius: 16, backgroundColor: 'rgba(239, 68, 68, 0.1)' },
+  signOutText: { color: '#EF4444', fontWeight: '600', fontSize: 16 },
 });

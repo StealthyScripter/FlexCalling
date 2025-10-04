@@ -1,71 +1,86 @@
-import { StyleSheet, FlatList, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, FlatList, TouchableOpacity, View, TextInput } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { ScreenContainer } from '@/components/screen-container';
+import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { BlurView } from 'expo-blur';
 
 export default function ContactsScreen() {
-  const iconColor = useThemeColor({}, 'icon');
+  const colorScheme = useColorScheme() ?? 'light';
+  const isDark = colorScheme === 'dark';
 
   const contacts = [
-    { id: '1', name: 'Alice Johnson', phone: '+254 712 345 678', favorite: true },
-    { id: '2', name: 'Bob Williams', phone: '+254 723 456 789', favorite: false },
-    { id: '3', name: 'Carol Davis', phone: '+254 734 567 890', favorite: true },
+    { id: '1', name: 'Alice Johnson', phone: '+254 712 345 678', favorite: true, avatarColor: '#EC4899' },
+    { id: '2', name: 'Bob Williams', phone: '+254 723 456 789', favorite: false, avatarColor: '#3B82F6' },
+    { id: '3', name: 'Carol Davis', phone: '+254 734 567 890', favorite: true, avatarColor: '#F59E0B' },
+    { id: '4', name: 'David Brown', phone: '+254 745 678 901', favorite: false, avatarColor: '#8B5CF6' },
   ];
 
   return (
-    <ScreenContainer>
+    <ThemedView style={styles.container}>
+      <View style={[styles.decorativeBlur, styles.blur1, { backgroundColor: isDark ? 'rgba(236, 72, 153, 0.15)' : 'rgba(236, 72, 153, 0.1)' }]} />
+
       <View style={styles.header}>
         <ThemedText type="title">Contacts</ThemedText>
-        <TouchableOpacity>
-          <IconSymbol name="plus.circle.fill" size={28} color={iconColor} />
+        <TouchableOpacity style={styles.addButton}>
+          <IconSymbol name="plus.circle.fill" size={32} color="#10B981" />
         </TouchableOpacity>
       </View>
+
+      <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.searchBar}>
+        <IconSymbol name="magnifyingglass" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
+        <TextInput
+          placeholder="Search contacts..."
+          placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'}
+          style={styles.searchInput}
+        />
+      </BlurView>
 
       <FlatList
         data={contacts}
         keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.contactItem}>
-            <View style={styles.avatar}>
-              <ThemedText style={styles.avatarText}>{item.name[0]}</ThemedText>
-            </View>
-            <View style={styles.contactInfo}>
-              <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-              <ThemedText style={styles.phone}>{item.phone}</ThemedText>
-            </View>
-            {item.favorite && (
-              <IconSymbol name="star.fill" size={20} color="#FFD700" />
-            )}
-          </TouchableOpacity>
+          <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.contactCard}>
+            <TouchableOpacity style={styles.contactContent}>
+              <View style={[styles.avatar, { backgroundColor: item.avatarColor }]}>
+                <ThemedText style={styles.avatarText}>{item.name[0]}</ThemedText>
+              </View>
+              <View style={styles.contactInfo}>
+                <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
+                <ThemedText style={styles.phone}>{item.phone}</ThemedText>
+              </View>
+              {item.favorite && (
+                <View style={styles.favoriteBadge}>
+                  <IconSymbol name="star.fill" size={16} color="#F59E0B" />
+                </View>
+              )}
+              <TouchableOpacity style={styles.callIconButton}>
+                <IconSymbol name="phone.fill" size={20} color="#10B981" />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </BlurView>
         )}
+        contentContainerStyle={{ paddingBottom: 100 }}
       />
-    </ScreenContainer>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  contactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    gap: 16,
-  },
-  avatar: {
-    width: 45,
-    height: 45,
-    borderRadius: 23,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  container: { flex: 1, paddingTop: 60 },
+  decorativeBlur: { position: 'absolute', width: 250, height: 250, borderRadius: 200, top: -80, right: -60, opacity: 0.6 },
+  blur1: {},
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
+  addButton: {},
+  searchBar: { marginHorizontal: 20, borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
+  searchInput: { flex: 1, fontSize: 16, color: '#111827' },
+  contactCard: { marginHorizontal: 20, marginBottom: 12, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
+  contactContent: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+  avatar: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: '#fff', fontSize: 20, fontWeight: '600' },
   contactInfo: { flex: 1 },
   phone: { fontSize: 14, opacity: 0.6, marginTop: 4 },
+  favoriteBadge: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(245, 158, 11, 0.1)', justifyContent: 'center', alignItems: 'center' },
+  callIconButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(16, 185, 129, 0.1)', justifyContent: 'center', alignItems: 'center' },
 });
