@@ -1,4 +1,3 @@
-// components/screen-container.tsx (UPDATED - Fix for TypeScript error)
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedView } from '@/components/themed-view';

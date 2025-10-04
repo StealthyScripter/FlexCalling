@@ -5,9 +5,6 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
 export const Colors = {
   light: {
     primary: '#10B981', // Green for call buttons
@@ -22,6 +19,7 @@ export const Colors = {
     missed: '#EF4444',
     decorativeBlur1: 'rgba(59, 130, 246, 0.1)',
     decorativeBlur2: 'rgba(16, 185, 129, 0.1)',
+    tint:'#0a7ea4',
   },
   dark: {
     primary: '#10B981',
@@ -36,6 +34,7 @@ export const Colors = {
     missed: '#EF4444',
     decorativeBlur1: 'rgba(59, 130, 246, 0.15)',
     decorativeBlur2: 'rgba(16, 185, 129, 0.15)',
+    tint: '#fff',
   },
 };
 
