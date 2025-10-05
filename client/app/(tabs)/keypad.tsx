@@ -1,4 +1,5 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -8,6 +9,7 @@ import { PhoneInput } from '@/components/phone-input';
 import { useState } from 'react';
 
 export default function KeypadScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -27,11 +29,22 @@ export default function KeypadScreen() {
     setPhoneNumber(prev => prev.slice(0, -1));
   };
 
+  const handleMakeCall = () => {
+    if (!phoneNumber) {
+      Alert.alert('Error', 'Please enter a phone number');
+      return;
+    }
+
+    // Navigate to active call screen
+    router.push('/(modals)/active-call');
+  };
+
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.decorativeBlur, styles.blur1, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]} />
 
-      <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.phoneNumberCard}><View style={styles.locationBadge}>
+      <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.phoneNumberCard}>
+        <View style={styles.locationBadge}>
           <IconSymbol name="globe" size={14} color="#10B981" />
           <ThemedText style={styles.locationText}>Kenya (+254)</ThemedText>
         </View>
@@ -64,6 +77,7 @@ export default function KeypadScreen() {
         <TouchableOpacity
           style={[styles.callButton, !phoneNumber && styles.callButtonDisabled]}
           disabled={!phoneNumber}
+          onPress={handleMakeCall}
         >
           <IconSymbol name="phone.fill" size={28} color="#fff" />
         </TouchableOpacity>
@@ -77,8 +91,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 60 },
   decorativeBlur: { position: 'absolute', width: 300, height: 300, borderRadius: 200, top: -120, left: -100, opacity: 0.6 },
   blur1: {},
-  header: { paddingHorizontal: 20, marginBottom: 24 },
-  phoneNumberCard: { marginTop:60, marginHorizontal: 20, borderRadius: 24, padding: 5, alignItems: 'center', marginBottom: 5, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
+  phoneNumberCard: { marginTop: 60, marginHorizontal: 20, borderRadius: 24, padding: 5, alignItems: 'center', marginBottom: 5, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
   locationBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginTop: 12 },
   locationText: { fontSize: 14, color: '#10B981', fontWeight: '600' },
   keypadContainer: { gap: 5, paddingHorizontal: 20 },

@@ -1,4 +1,5 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -6,8 +7,19 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 
 export default function IncomingCallScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
+
+  const handleAccept = () => {
+    // Navigate to active call screen
+    router.replace('/(modals)/active-call');
+  };
+
+  const handleDecline = () => {
+    // Go back to previous screen
+    router.back();
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -31,10 +43,10 @@ export default function IncomingCallScreen() {
       </View>
 
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.declineButton}>
+        <TouchableOpacity style={styles.declineButton} onPress={handleDecline}>
           <IconSymbol name="phone.down.fill" size={32} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.acceptButton}>
+        <TouchableOpacity style={styles.acceptButton} onPress={handleAccept}>
           <IconSymbol name="phone.fill" size={32} color="#fff" />
         </TouchableOpacity>
       </View>

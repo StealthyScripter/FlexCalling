@@ -1,4 +1,5 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -7,10 +8,32 @@ import { BlurView } from 'expo-blur';
 import { useState } from 'react';
 
 export default function ActiveCallScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaker, setIsSpeaker] = useState(false);
+
+  const handleEndCall = () => {
+    Alert.alert(
+      'End Call',
+      'Are you sure you want to end this call?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'End Call',
+          style: 'destructive',
+          onPress: () => {
+            // Navigate back to previous screen
+            router.back();
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -51,7 +74,7 @@ export default function ActiveCallScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.endCallButton}>
+        <TouchableOpacity style={styles.endCallButton} onPress={handleEndCall}>
           <IconSymbol name="phone.down.fill" size={32} color="#fff" />
         </TouchableOpacity>
       </View>

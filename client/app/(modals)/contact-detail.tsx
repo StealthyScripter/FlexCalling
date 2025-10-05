@@ -1,4 +1,5 @@
 import { StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -6,6 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 
 export default function ContactDetailScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
@@ -15,9 +17,41 @@ export default function ContactDetailScreen() {
     { id: '3', date: 'Dec 28, 11:30 AM', duration: '25:10', cost: '$1.26', type: 'outgoing' },
   ];
 
+  const handleMakeCall = () => {
+    router.push('/(modals)/active-call');
+  };
+
+  const handleSendMessage = () => {
+    // TODO: Implement messaging
+    console.log('Send message');
+  };
+
+  const handleVideoCall = () => {
+    // TODO: Implement video call
+    console.log('Video call');
+  };
+
+  const handleCallDetail = (call: any) => {
+    router.push('/(modals)/call-detail');
+  };
+
+  const handleEditContact = () => {
+    router.push('/(modals)/edit-contact');
+  };
+
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.decorativeBlur, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]} />
+
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <IconSymbol name="chevron.left" size={24} color={isDark ? '#F1F5F9' : '#111827'} />
+        </TouchableOpacity>
+        <ThemedText type="title">Contact Details</ThemedText>
+        <TouchableOpacity onPress={handleEditContact} style={styles.editButton}>
+          <IconSymbol name="pencil.circle.fill" size={28} color="#10B981" />
+        </TouchableOpacity>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.headerCard}>
@@ -31,13 +65,22 @@ export default function ContactDetailScreen() {
           </View>
 
           <View style={styles.actions}>
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#10B981' }]}>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#10B981' }]}
+              onPress={handleMakeCall}
+            >
               <IconSymbol name="phone.fill" size={24} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#3B82F6' }]}>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#3B82F6' }]}
+              onPress={handleSendMessage}
+            >
               <IconSymbol name="message.fill" size={24} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#8B5CF6' }]}>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#8B5CF6' }]}
+              onPress={handleVideoCall}
+            >
               <IconSymbol name="video.fill" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -47,7 +90,10 @@ export default function ContactDetailScreen() {
           <ThemedText type="subtitle" style={styles.sectionTitle}>Call History</ThemedText>
           {callHistory.map((item) => (
             <BlurView key={item.id} intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.historyCard}>
-              <View style={styles.historyContent}>
+              <TouchableOpacity
+                style={styles.historyContent}
+                onPress={() => handleCallDetail(item)}
+              >
                 <View style={[styles.callTypeIcon, { backgroundColor: item.type === 'outgoing' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.15)' }]}>
                   <IconSymbol
                     name={item.type === 'outgoing' ? 'phone.arrow.up.right.fill' : 'phone.arrow.down.left.fill'}
@@ -60,7 +106,7 @@ export default function ContactDetailScreen() {
                   <ThemedText style={styles.historyDetail}>Duration: {item.duration}</ThemedText>
                 </View>
                 <ThemedText style={styles.cost}>{item.cost}</ThemedText>
-              </View>
+              </TouchableOpacity>
             </BlurView>
           ))}
         </View>
@@ -72,6 +118,9 @@ export default function ContactDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 60 },
   decorativeBlur: { position: 'absolute', width: 280, height: 280, borderRadius: 200, top: -100, right: -80, opacity: 0.6 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 24 },
+  backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' },
+  editButton: {},
   headerCard: { marginHorizontal: 20, borderRadius: 32, padding: 32, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
   avatar: { width: 100, height: 100, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   avatarText: { color: '#fff', fontSize: 40, fontWeight: '600' },

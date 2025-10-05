@@ -1,4 +1,5 @@
 import { StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -6,6 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 
 export default function RecentsScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
@@ -38,9 +40,20 @@ export default function RecentsScreen() {
     }
   };
 
+  const handleCallDetail = (call: any) => {
+    router.push('/(modals)/call-detail');
+  };
+
+  const handleMakeCall = (call: any) => {
+    router.push('/(modals)/active-call');
+  };
+
   const renderCallItem = ({ item }: any) => (
     <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.callCard}>
-      <View style={styles.callContent}>
+      <TouchableOpacity
+        style={styles.callContent}
+        onPress={() => handleCallDetail(item)}
+      >
         <View style={[styles.avatar, { backgroundColor: item.avatarColor }]}>
           <ThemedText style={styles.avatarText}>{item.initial}</ThemedText>
         </View>
@@ -53,16 +66,18 @@ export default function RecentsScreen() {
             </View>
           </View>
         </View>
-        <TouchableOpacity style={[styles.callButton, { backgroundColor: '#10B981' }]}>
+        <TouchableOpacity
+          style={[styles.callButton, { backgroundColor: '#10B981' }]}
+          onPress={() => handleMakeCall(item)}
+        >
           <IconSymbol name="phone.fill" size={20} color="#fff" />
         </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
     </BlurView>
   );
 
   return (
     <ThemedView style={styles.container}>
-      {/* Decorative background blurs */}
       <View style={[styles.decorativeBlur, styles.blur1, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]} />
       <View style={[styles.decorativeBlur, styles.blur2, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]} />
 
@@ -90,9 +105,7 @@ export default function RecentsScreen() {
             {renderCallItem({ item })}
           </View>
         ))}
-
       </ScrollView>
-      
     </ThemedView>
   );
 }
@@ -115,9 +128,4 @@ const styles = StyleSheet.create({
   callBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   callTime: { fontSize: 12, fontWeight: '600' },
   callButton: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  statsCard: { marginHorizontal: 20, borderRadius: 20, padding: 20, flexDirection: 'row', borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
-  statItem: { flex: 1, alignItems: 'center' },
-  statLabel: { fontSize: 12, opacity: 0.6, marginTop: 4 },
-  statDivider: { width: 1, backgroundColor: 'rgba(0,0,0,0.1)', marginHorizontal: 8 },
-  fab: { position: 'absolute', bottom: 100, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
 });

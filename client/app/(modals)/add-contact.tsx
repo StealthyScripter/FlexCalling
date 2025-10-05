@@ -1,4 +1,5 @@
-import { StyleSheet, TextInput, TouchableOpacity, View, ScrollView } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -7,19 +8,48 @@ import { BlurView } from 'expo-blur';
 import { useState } from 'react';
 
 export default function AddContactScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
   const [isFavorite, setIsFavorite] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [location, setLocation] = useState('');
+
+  const handleSave = () => {
+    if (!firstName || !phoneNumber) {
+      Alert.alert('Error', 'Please enter at least a name and phone number');
+      return;
+    }
+
+    // TODO: Save contact to database
+    Alert.alert('Success', 'Contact saved successfully', [
+      {
+        text: 'OK',
+        onPress: () => router.back()
+      }
+    ]);
+  };
+
+  const handleCancel = () => {
+    router.back();
+  };
 
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.decorativeBlur, { backgroundColor: isDark ? 'rgba(236, 72, 153, 0.15)' : 'rgba(236, 72, 153, 0.1)' }]} />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <ThemedText type="title">Add Contact</ThemedText>
-        </View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
+          <IconSymbol name="chevron.left" size={24} color={isDark ? '#F1F5F9' : '#111827'} />
+        </TouchableOpacity>
+        <ThemedText type="title">Add Contact</ThemedText>
+        <View style={styles.spacer} />
+      </View>
 
+      <ScrollView showsVerticalScrollIndicator={false}>
         <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.avatarCard}>
           <TouchableOpacity style={[styles.avatarPlaceholder, { backgroundColor: '#EC4899' }]}>
             <IconSymbol name="camera.fill" size={32} color="#fff" />
@@ -30,27 +60,59 @@ export default function AddContactScreen() {
         <View style={styles.form}>
           <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.inputCard}>
             <IconSymbol name="person.fill" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
-            <TextInput style={styles.input} placeholder="First Name" placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'} />
+            <TextInput
+              style={styles.input}
+              placeholder="First Name"
+              placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'}
+              value={firstName}
+              onChangeText={setFirstName}
+            />
           </BlurView>
 
           <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.inputCard}>
             <IconSymbol name="person.fill" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
-            <TextInput style={styles.input} placeholder="Last Name" placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'} />
+            <TextInput
+              style={styles.input}
+              placeholder="Last Name"
+              placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'}
+              value={lastName}
+              onChangeText={setLastName}
+            />
           </BlurView>
 
           <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.inputCard}>
             <IconSymbol name="phone.fill" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
-            <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'} keyboardType="phone-pad" />
+            <TextInput
+              style={styles.input}
+              placeholder="Phone Number"
+              placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'}
+              keyboardType="phone-pad"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+            />
           </BlurView>
 
           <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.inputCard}>
             <IconSymbol name="envelope.fill" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
-            <TextInput style={styles.input} placeholder="Email (optional)" placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'} keyboardType="email-address" />
+            <TextInput
+              style={styles.input}
+              placeholder="Email (optional)"
+              placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'}
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
           </BlurView>
 
           <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.inputCard}>
             <IconSymbol name="mappin.circle.fill" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
-            <TextInput style={styles.input} placeholder="Location (e.g., Nairobi, Kenya)" placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'} />
+            <TextInput
+              style={styles.input}
+              placeholder="Location (e.g., Nairobi, Kenya)"
+              placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'}
+              value={location}
+              onChangeText={setLocation}
+            />
           </BlurView>
 
           <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.favoriteCard}>
@@ -68,13 +130,15 @@ export default function AddContactScreen() {
         </View>
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.cancelButton}>
+          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
             <ThemedText style={styles.cancelText}>Cancel</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.saveButton}>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <ThemedText style={styles.saveText}>Save Contact</ThemedText>
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: 100 }} />
       </ScrollView>
     </ThemedView>
   );
@@ -83,7 +147,9 @@ export default function AddContactScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 60 },
   decorativeBlur: { position: 'absolute', width: 280, height: 280, borderRadius: 200, top: -120, right: -100, opacity: 0.6 },
-  header: { paddingHorizontal: 20, marginBottom: 24 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 24 },
+  backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' },
+  spacer: { width: 44 },
   avatarCard: { marginHorizontal: 20, borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
   avatarPlaceholder: { width: 100, height: 100, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   avatarText: { fontSize: 14, opacity: 0.6 },

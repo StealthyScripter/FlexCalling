@@ -1,4 +1,5 @@
 import { StyleSheet, FlatList, TouchableOpacity, View, TextInput } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -6,6 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 
 export default function ContactsScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
@@ -16,13 +18,25 @@ export default function ContactsScreen() {
     { id: '4', name: 'David Brown', phone: '+254 745 678 901', favorite: false, avatarColor: '#8B5CF6' },
   ];
 
+  const handleContactDetail = (contact: any) => {
+    router.push('/(modals)/contact-detail');
+  };
+
+  const handleMakeCall = (contact: any) => {
+    router.push('/(modals)/active-call');
+  };
+
+  const handleAddContact = () => {
+    router.push('/(modals)/add-contact');
+  };
+
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.decorativeBlur, styles.blur1, { backgroundColor: isDark ? 'rgba(236, 72, 153, 0.15)' : 'rgba(236, 72, 153, 0.1)' }]} />
 
       <View style={styles.header}>
         <ThemedText type="title">Contacts</ThemedText>
-        <TouchableOpacity style={styles.addButton}>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddContact}>
           <IconSymbol name="plus.circle.fill" size={32} color="#10B981" />
         </TouchableOpacity>
       </View>
@@ -42,7 +56,10 @@ export default function ContactsScreen() {
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.contactCard}>
-            <TouchableOpacity style={styles.contactContent}>
+            <TouchableOpacity
+              style={styles.contactContent}
+              onPress={() => handleContactDetail(item)}
+            >
               <View style={[styles.avatar, { backgroundColor: item.avatarColor }]}>
                 <ThemedText style={styles.avatarText}>{item.name[0]}</ThemedText>
               </View>
@@ -55,7 +72,10 @@ export default function ContactsScreen() {
                   <IconSymbol name="star.fill" size={16} color="#F59E0B" />
                 </View>
               )}
-              <TouchableOpacity style={styles.callIconButton}>
+              <TouchableOpacity
+                style={styles.callIconButton}
+                onPress={() => handleMakeCall(item)}
+              >
                 <IconSymbol name="phone.fill" size={20} color="#10B981" />
               </TouchableOpacity>
             </TouchableOpacity>
