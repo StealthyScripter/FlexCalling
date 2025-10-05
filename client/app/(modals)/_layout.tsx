@@ -52,6 +52,13 @@ export default function ModalsLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="test-navigation"
+        options={{
+          title: 'Test Navigation',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
