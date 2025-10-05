@@ -5,35 +5,32 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
-
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* Splash Screen */}
+        <Stack.Screen name="index" />
+
+        {/* Auth Flow */}
+        <Stack.Screen name="(auth)" />
+
+        {/* Main App Tabs */}
+        <Stack.Screen name="(tabs)" />
+
+        {/* Modal Screens Group */}
         <Stack.Screen
-          name="incoming-call"
-          options={{ presentation: 'fullScreenModal', headerShown: false }}
-        />
-        <Stack.Screen
-          name="active-call"
+          name="(modals)"
           options={{
-            presentation: 'fullScreenModal',
+            presentation: 'modal',
             headerShown: false
           }}
         />
-        <Stack.Screen
-          name="contact-detail"
-          options={{
-            presentation: 'modal',
-            title: 'Contact Details'
-          }}
-        />
+
+        {/* 404 Not Found */}
+        <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
