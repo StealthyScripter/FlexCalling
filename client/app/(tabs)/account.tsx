@@ -4,14 +4,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/contexts/theme-context';
 import { BlurView } from 'expo-blur';
-import { useState } from 'react';
 
 export default function AccountScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme();
+  const { toggleTheme } = useTheme();
   const isDark = colorScheme === 'dark';
-  const [darkMode, setDarkMode] = useState(isDark);
 
   const menuItems = [
     { icon: 'person.circle.fill' as const, label: 'Edit Profile', chevron: true, route: null },
@@ -80,8 +80,8 @@ export default function AccountScreen() {
               <ThemedText type="defaultSemiBold">Dark Mode</ThemedText>
             </View>
             <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
+              value={isDark}
+              onValueChange={toggleTheme}
               trackColor={{ false: '#D1D5DB', true: '#10B981' }}
               thumbColor="#fff"
             />
