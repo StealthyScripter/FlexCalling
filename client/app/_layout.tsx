@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { ThemeProvider as CustomThemeProvider } from '@/contexts/theme-context';
+import { TwilioProvider } from '@/contexts/twilio-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 function RootLayoutNav() {
@@ -41,7 +42,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <CustomThemeProvider>
-      <RootLayoutNav />
+      <TwilioProvider>
+        <RootLayoutNav />
+      </TwilioProvider>
     </CustomThemeProvider>
   );
 }

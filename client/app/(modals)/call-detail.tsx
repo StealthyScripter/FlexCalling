@@ -1,55 +1,128 @@
-import { StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
+import { useTwilioContext } from '@/contexts/twilio-context';
 
 export default function CallDetailScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
-  // TODO: Get actual call data from route params
+  const { makeCall, isInitialized } = useTwilioContext();
+
+  // Get call data from params (in real app, fetch from database using callId)
+  const callId = params.callId as string;
+  const name = (params.name as string) || 'Unknown';
+  const phone = (params.phone as string) || 'Unknown';
+
+  // Mock call data (TODO: fetch from database using callId)
   const callData = {
-    contact: 'John Doe',
-    phoneNumber: '+254 712 345 678',
+    id: callId,
+    name: name,
+    phone: phone,
     type: 'outgoing',
     status: 'completed',
-    date: 'December 30, 2024',
-    time: '2:30 PM',
+    date: 'Today, 2:30 PM',
     duration: '12:45',
     cost: '$0.64',
-    quality: 'HD',
+    quality: 'Excellent',
     location: 'Nairobi, Kenya',
-    recordingUrl: null,
+    recordingUrl: null, // TODO: get from database
   };
 
-  const getCallTypeColor = (type: string) => {
-    switch (type) {
-      case 'outgoing': return '#10B981';
-      case 'incoming': return '#3B82F6';
-      case 'missed': return '#EF4444';
-      default: return '#6B7280';
+  const handleCallBack = async () => {
+    if (!isInitialized) {
+      Alert.alert('Error', 'Calling service not ready');
+      return;
+    }
+
+    if (!callData.phone || callData.phone === 'Unknown') {
+      Alert.alert('Error', 'Phone number not available');
+      return;
+    }
+
+    try {
+      console.log(`📞 Calling back ${callData.name} at ${callData.phone}`);
+      await makeCall(callData.phone, {
+        callerName: callData.name,
+      });
+    } catch (error: any) {
+      console.error('❌ Call failed:', error);
+      Alert.alert('Call Failed', error?.message || 'Unable to place call');
     }
   };
 
-  const getCallTypeIcon = (type: string) => {
-    switch (type) {
-      case 'outgoing': return 'phone.arrow.up.right.fill';
-      case 'incoming': return 'phone.arrow.down.left.fill';
-      case 'missed': return 'phone.down.fill';
-      default: return 'phone.fill';
+  const handleSendMessage = () => {
+    Alert.alert('Coming Soon', 'SMS feature will be available soon');
+  };
+
+  const handleBlockNumber = () => {
+    Alert.alert(
+      'Block Number',
+      `Block ${callData.phone}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: () => {
+            // TODO: Add to blocked numbers
+            Alert.alert('Blocked', `${callData.phone} has been blocked`);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteCall = () => {
+    Alert.alert(
+      'Delete Call',
+      'Delete this call from history?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            // TODO: Delete from database
+            Alert.alert('Deleted', 'Call deleted from history', [
+              { text: 'OK', onPress: () => router.back() },
+            ]);
+          },
+        },
+      ]
+    );
+  };
+
+  const getCallTypeIcon = () => {
+    switch (callData.type) {
+      case 'outgoing':
+        return 'phone.arrow.up.right.fill';
+      case 'incoming':
+        return 'phone.arrow.down.left.fill';
+      case 'missed':
+        return 'phone.down.fill';
+      default:
+        return 'phone.fill';
     }
   };
 
-  const getCallTypeLabel = (type: string) => {
-    switch (type) {
-      case 'outgoing': return 'Outgoing Call';
-      case 'incoming': return 'Incoming Call';
-      case 'missed': return 'Missed Call';
-      default: return 'Call';
+  const getCallTypeColor = () => {
+    switch (callData.type) {
+      case 'outgoing':
+        return '#10B981';
+      case 'incoming':
+        return '#3B82F6';
+      case 'missed':
+        return '#EF4444';
+      default:
+        return '#6B7280';
     }
   };
 
@@ -62,157 +135,131 @@ export default function CallDetailScreen() {
           <IconSymbol name="chevron.left" size={24} color={isDark ? '#F1F5F9' : '#111827'} />
         </TouchableOpacity>
         <ThemedText type="title">Call Details</ThemedText>
-        <View style={styles.spacer} />
+        <TouchableOpacity onPress={handleDeleteCall} style={styles.deleteButton}>
+          <IconSymbol name="trash.fill" size={20} color="#EF4444" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Contact Info Card */}
-        <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.contactCard}>
-          <View style={[styles.avatar, { backgroundColor: getCallTypeColor(callData.type) }]}>
-            <ThemedText style={styles.avatarText}>{callData.contact[0]}</ThemedText>
+        {/* Call Header */}
+        <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.headerCard}>
+          <View style={[styles.avatar, { backgroundColor: getCallTypeColor() }]}>
+            <ThemedText style={styles.avatarText}>{callData.name[0]?.toUpperCase() || '?'}</ThemedText>
           </View>
-          <ThemedText type="title" style={styles.contactName}>{callData.contact}</ThemedText>
+          <ThemedText type="title" style={styles.name}>{callData.name}</ThemedText>
           <View style={styles.phoneBadge}>
-            <IconSymbol name="phone.fill" size={14} color={isDark ? '#94A3B8' : '#6B7280'} />
-            <ThemedText style={styles.phoneNumber}>{callData.phoneNumber}</ThemedText>
+            <IconSymbol name="phone.fill" size={14} color={getCallTypeColor()} />
+            <ThemedText style={[styles.phone, { color: getCallTypeColor() }]}>{callData.phone}</ThemedText>
           </View>
-          <View style={[styles.callTypeBadge, { backgroundColor: getCallTypeColor(callData.type) + '20' }]}>
-            <IconSymbol name={getCallTypeIcon(callData.type)} size={16} color={getCallTypeColor(callData.type)} />
-            <ThemedText style={[styles.callTypeText, { color: getCallTypeColor(callData.type) }]}>
-              {getCallTypeLabel(callData.type)}
+
+          <View style={styles.callTypeBadge}>
+            <IconSymbol name={getCallTypeIcon()} size={16} color={getCallTypeColor()} />
+            <ThemedText style={[styles.callTypeText, { color: getCallTypeColor() }]}>
+              {callData.type.charAt(0).toUpperCase() + callData.type.slice(1)}
             </ThemedText>
           </View>
-        </BlurView>
 
-        {/* Call Information */}
-        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>CALL INFORMATION</ThemedText>
-
-        <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.infoCard}>
-          <View style={[styles.infoItem, styles.infoBorder]}>
-            <View style={styles.infoIcon}>
-              <IconSymbol name="calendar" size={20} color="#3B82F6" />
-            </View>
-            <View style={styles.infoContent}>
-              <ThemedText style={styles.infoLabel}>Date</ThemedText>
-              <ThemedText type="defaultSemiBold">{callData.date}</ThemedText>
-            </View>
-          </View>
-
-          <View style={[styles.infoItem, styles.infoBorder]}>
-            <View style={styles.infoIcon}>
-              <IconSymbol name="clock.fill" size={20} color="#8B5CF6" />
-            </View>
-            <View style={styles.infoContent}>
-              <ThemedText style={styles.infoLabel}>Time</ThemedText>
-              <ThemedText type="defaultSemiBold">{callData.time}</ThemedText>
-            </View>
-          </View>
-
-          <View style={[styles.infoItem, styles.infoBorder]}>
-            <View style={styles.infoIcon}>
-              <IconSymbol name="timer" size={20} color="#10B981" />
-            </View>
-            <View style={styles.infoContent}>
-              <ThemedText style={styles.infoLabel}>Duration</ThemedText>
-              <ThemedText type="defaultSemiBold">{callData.duration}</ThemedText>
-            </View>
-          </View>
-
-          <View style={[styles.infoItem, styles.infoBorder]}>
-            <View style={styles.infoIcon}>
-              <IconSymbol name="dollarsign.circle.fill" size={20} color="#F59E0B" />
-            </View>
-            <View style={styles.infoContent}>
-              <ThemedText style={styles.infoLabel}>Cost</ThemedText>
-              <ThemedText type="defaultSemiBold" style={{ color: '#10B981' }}>{callData.cost}</ThemedText>
-            </View>
-          </View>
-
-          <View style={[styles.infoItem, styles.infoBorder]}>
-            <View style={styles.infoIcon}>
-              <IconSymbol name="waveform" size={20} color="#EC4899" />
-            </View>
-            <View style={styles.infoContent}>
-              <ThemedText style={styles.infoLabel}>Quality</ThemedText>
-              <ThemedText type="defaultSemiBold">{callData.quality} Voice</ThemedText>
-            </View>
-          </View>
-
-          <View style={styles.infoItem}>
-            <View style={styles.infoIcon}>
-              <IconSymbol name="mappin.circle.fill" size={20} color="#EF4444" />
-            </View>
-            <View style={styles.infoContent}>
-              <ThemedText style={styles.infoLabel}>Location</ThemedText>
-              <ThemedText type="defaultSemiBold">{callData.location}</ThemedText>
-            </View>
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#10B981' }]}
+              onPress={handleCallBack}
+            >
+              <IconSymbol name="phone.fill" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#3B82F6' }]}
+              onPress={handleSendMessage}
+            >
+              <IconSymbol name="message.fill" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
+              onPress={handleBlockNumber}
+            >
+              <IconSymbol name="hand.raised.fill" size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
         </BlurView>
 
-        {/* Recording Section (if available) */}
-        {callData.recordingUrl && (
-          <>
-            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>RECORDING</ThemedText>
+        {/* Call Info */}
+        <View style={styles.infoSection}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>Call Information</ThemedText>
 
+          <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIcon}>
+                <IconSymbol name="calendar" size={20} color="#3B82F6" />
+              </View>
+              <View style={styles.infoText}>
+                <ThemedText style={styles.infoLabel}>Date & Time</ThemedText>
+                <ThemedText type="defaultSemiBold">{callData.date}</ThemedText>
+              </View>
+            </View>
+          </BlurView>
+
+          <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIcon}>
+                <IconSymbol name="clock.fill" size={20} color="#10B981" />
+              </View>
+              <View style={styles.infoText}>
+                <ThemedText style={styles.infoLabel}>Duration</ThemedText>
+                <ThemedText type="defaultSemiBold">{callData.duration}</ThemedText>
+              </View>
+            </View>
+          </BlurView>
+
+          <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIcon}>
+                <IconSymbol name="dollarsign.circle.fill" size={20} color="#F59E0B" />
+              </View>
+              <View style={styles.infoText}>
+                <ThemedText style={styles.infoLabel}>Cost</ThemedText>
+                <ThemedText type="defaultSemiBold" style={{ color: '#F59E0B' }}>{callData.cost}</ThemedText>
+              </View>
+            </View>
+          </BlurView>
+
+          <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIcon}>
+                <IconSymbol name="waveform" size={20} color="#8B5CF6" />
+              </View>
+              <View style={styles.infoText}>
+                <ThemedText style={styles.infoLabel}>Call Quality</ThemedText>
+                <ThemedText type="defaultSemiBold">{callData.quality}</ThemedText>
+              </View>
+            </View>
+          </BlurView>
+
+          <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIcon}>
+                <IconSymbol name="mappin.circle.fill" size={20} color="#EC4899" />
+              </View>
+              <View style={styles.infoText}>
+                <ThemedText style={styles.infoLabel}>Location</ThemedText>
+                <ThemedText type="defaultSemiBold">{callData.location}</ThemedText>
+              </View>
+            </View>
+          </BlurView>
+
+          {callData.recordingUrl && (
             <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.recordingCard}>
-              <View style={styles.recordingHeader}>
-                <IconSymbol name="waveform.path" size={24} color="#8B5CF6" />
+              <View style={styles.recordingIcon}>
+                <IconSymbol name="waveform.circle.fill" size={24} color="#10B981" />
+              </View>
+              <View style={styles.recordingInfo}>
                 <ThemedText type="defaultSemiBold">Call Recording</ThemedText>
+                <ThemedText style={styles.recordingDuration}>Duration: {callData.duration}</ThemedText>
               </View>
-              <View style={styles.recordingControls}>
-                <TouchableOpacity style={styles.playButton}>
-                  <IconSymbol name="play.fill" size={20} color="#fff" />
-                </TouchableOpacity>
-                <View style={styles.waveform}>
-                  <View style={styles.waveformBar} />
-                  <View style={[styles.waveformBar, { height: 30 }]} />
-                  <View style={[styles.waveformBar, { height: 20 }]} />
-                  <View style={[styles.waveformBar, { height: 35 }]} />
-                  <View style={styles.waveformBar} />
-                  <View style={[styles.waveformBar, { height: 25 }]} />
-                </View>
-                <TouchableOpacity style={styles.downloadButton}>
-                  <IconSymbol name="arrow.down.circle.fill" size={24} color="#10B981" />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity style={styles.playButton}>
+                <IconSymbol name="play.fill" size={20} color="#10B981" />
+              </TouchableOpacity>
             </BlurView>
-          </>
-        )}
-
-        {/* Quick Actions */}
-        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>QUICK ACTIONS</ThemedText>
-
-        <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.actionsCard}>
-          <TouchableOpacity style={[styles.actionItem, styles.actionBorder]}>
-            <IconSymbol name="phone.fill" size={20} color="#10B981" />
-            <ThemedText style={styles.actionText}>Call Back</ThemedText>
-            <IconSymbol name="chevron.right" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.actionItem, styles.actionBorder]}>
-            <IconSymbol name="message.fill" size={20} color="#3B82F6" />
-            <ThemedText style={styles.actionText}>Send Message</ThemedText>
-            <IconSymbol name="chevron.right" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.actionItem, styles.actionBorder]}>
-            <IconSymbol name="person.crop.circle" size={20} color="#8B5CF6" />
-            <ThemedText style={styles.actionText}>View Contact</ThemedText>
-            <IconSymbol name="chevron.right" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionItem}>
-            <IconSymbol name="square.and.arrow.up.fill" size={20} color="#F59E0B" />
-            <ThemedText style={styles.actionText}>Share Call Details</ThemedText>
-            <IconSymbol name="chevron.right" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
-          </TouchableOpacity>
-        </BlurView>
-
-        {/* Report Issue */}
-        <TouchableOpacity style={styles.reportButton}>
-          <IconSymbol name="exclamationmark.triangle.fill" size={20} color="#EF4444" />
-          <ThemedText style={styles.reportText}>Report an Issue with this Call</ThemedText>
-        </TouchableOpacity>
+          )}
+        </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -225,33 +272,27 @@ const styles = StyleSheet.create({
   decorativeBlur: { position: 'absolute', width: 280, height: 280, borderRadius: 200, top: -100, right: -80, opacity: 0.6 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 24 },
   backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' },
-  spacer: { width: 44 },
-  contactCard: { marginHorizontal: 20, borderRadius: 32, padding: 32, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
-  avatar: { width: 80, height: 80, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  avatarText: { color: '#fff', fontSize: 32, fontWeight: '600' },
-  contactName: { marginBottom: 12 },
-  phoneBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, marginBottom: 12 },
-  phoneNumber: { fontSize: 16, fontWeight: '600' },
-  callTypeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16 },
+  deleteButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(239, 68, 68, 0.1)', justifyContent: 'center', alignItems: 'center' },
+  headerCard: { marginHorizontal: 20, borderRadius: 32, padding: 32, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
+  avatar: { width: 100, height: 100, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  avatarText: { color: '#fff', fontSize: 40, fontWeight: '600' },
+  name: { marginBottom: 12 },
+  phoneBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(16, 185, 129, 0.15)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, marginBottom: 12 },
+  phone: { fontSize: 16, fontWeight: '600' },
+  callTypeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12, marginBottom: 24 },
   callTypeText: { fontSize: 14, fontWeight: '600' },
-  sectionTitle: { fontSize: 12, letterSpacing: 1, opacity: 0.5, marginBottom: 12, marginTop: 24, paddingHorizontal: 20 },
-  infoCard: { marginHorizontal: 20, borderRadius: 24, padding: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
-  infoItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 12, gap: 12 },
-  infoBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-  infoIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' },
-  infoContent: { flex: 1 },
+  actions: { flexDirection: 'row', gap: 16 },
+  actionButton: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
+  infoSection: { paddingHorizontal: 20 },
+  sectionTitle: { marginBottom: 16 },
+  infoCard: { marginBottom: 12, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  infoIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(59, 130, 246, 0.1)', justifyContent: 'center', alignItems: 'center' },
+  infoText: { flex: 1 },
   infoLabel: { fontSize: 14, opacity: 0.6, marginBottom: 4 },
-  recordingCard: { marginHorizontal: 20, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
-  recordingHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  recordingControls: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  playButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#8B5CF6', justifyContent: 'center', alignItems: 'center' },
-  waveform: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4, height: 40 },
-  waveformBar: { flex: 1, height: 24, backgroundColor: 'rgba(139, 92, 246, 0.3)', borderRadius: 2 },
-  downloadButton: {},
-  actionsCard: { marginHorizontal: 20, borderRadius: 24, padding: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
-  actionItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 12, gap: 12 },
-  actionBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-  actionText: { flex: 1, fontSize: 16 },
-  reportButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginHorizontal: 20, marginTop: 24, paddingVertical: 16, borderRadius: 16, backgroundColor: 'rgba(239, 68, 68, 0.1)' },
-  reportText: { color: '#EF4444', fontSize: 14, fontWeight: '600' },
+  recordingCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 16, marginTop: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
+  recordingIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(16, 185, 129, 0.1)', justifyContent: 'center', alignItems: 'center' },
+  recordingInfo: { flex: 1 },
+  recordingDuration: { fontSize: 12, opacity: 0.6, marginTop: 2 },
+  playButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(16, 185, 129, 0.1)', justifyContent: 'center', alignItems: 'center' },
 });

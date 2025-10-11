@@ -1,24 +1,46 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
+import { useTwilioContext } from '@/contexts/twilio-context';
 
 export default function IncomingCallScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
-  const handleAccept = () => {
-    // Navigate to active call screen
-    router.replace('/(modals)/active-call');
+  const { acceptIncomingCall, rejectIncomingCall } = useTwilioContext();
+
+  const callerName = params.callerName as string || 'Unknown Caller';
+  const from = params.from as string || 'Unknown';
+  const location = params.location as string || 'Kenya';
+
+  const handleAccept = async () => {
+    try {
+      console.log('📞 Accepting incoming call...');
+      await acceptIncomingCall();
+      // Navigation to active-call is handled by the useEffect in keypad/hook
+    } catch (error: any) {
+      console.error('❌ Failed to accept call:', error);
+      Alert.alert('Error', error?.message || 'Failed to accept call');
+      router.back();
+    }
   };
 
-  const handleDecline = () => {
-    // Go back to previous screen
-    router.back();
+  const handleDecline = async () => {
+    try {
+      console.log('📞 Rejecting incoming call...');
+      await rejectIncomingCall();
+      router.back();
+    } catch (error: any) {
+      console.error('❌ Failed to reject call:', error);
+      Alert.alert('Error', error?.message || 'Failed to reject call');
+      router.back();
+    }
   };
 
   return (
@@ -29,12 +51,12 @@ export default function IncomingCallScreen() {
       <View style={styles.callerInfo}>
         <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.callerCard}>
           <View style={[styles.callerAvatar, { backgroundColor: '#3B82F6' }]}>
-            <ThemedText style={styles.callerInitial}>JD</ThemedText>
+            <ThemedText style={styles.callerInitial}>{callerName[0]?.toUpperCase() || '?'}</ThemedText>
           </View>
-          <ThemedText type="title" style={styles.callerName}>John Doe</ThemedText>
+          <ThemedText type="title" style={styles.callerName}>{callerName}</ThemedText>
           <View style={styles.locationBadge}>
             <IconSymbol name="mappin.circle.fill" size={16} color="#10B981" />
-            <ThemedText style={styles.callerLocation}>Nairobi, Kenya</ThemedText>
+            <ThemedText style={styles.callerLocation}>{location}</ThemedText>
           </View>
           <View style={styles.callTypeBadge}>
             <ThemedText style={styles.callType}>FlexCalling</ThemedText>

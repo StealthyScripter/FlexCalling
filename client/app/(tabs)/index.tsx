@@ -1,25 +1,28 @@
-import { StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
+import { useTwilioContext } from '@/contexts/twilio-context';
 
 export default function RecentsScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
+  const { makeCall, isInitialized } = useTwilioContext();
+
   const recentCalls = [
-    { id: '1', name: 'Sarah Chen', initial: 'S', time: '2m', type: 'missed', location: 'Nairobi, Kenya', avatarColor: '#EC4899' },
-    { id: '2', name: 'Mike Johnson', initial: 'M', time: '1h', type: 'incoming', location: 'Mombasa, Kenya', avatarColor: '#10B981' },
+    { id: '1', name: 'Sarah Chen', initial: 'S', time: '2m', type: 'missed', location: 'Nairobi, Kenya', avatarColor: '#EC4899', phone: '+254712345678' },
+    { id: '2', name: 'Mike Johnson', initial: 'M', time: '1h', type: 'incoming', location: 'Mombasa, Kenya', avatarColor: '#10B981', phone: '+254723456789' },
   ];
 
   const earlierCalls = [
-    { id: '3', name: 'Emma Wilson', initial: 'E', time: '3h', type: 'outgoing', location: 'Kisumu, Kenya', avatarColor: '#3B82F6' },
-    { id: '4', name: 'Unknown', initial: '?', time: 'Yesterday', type: 'missed', location: 'Kenya', avatarColor: '#6B7280' },
-    { id: '5', name: 'Dad', initial: 'D', time: 'Yesterday', type: 'incoming', location: 'Nairobi, Kenya', avatarColor: '#8B5CF6' },
+    { id: '3', name: 'Emma Wilson', initial: 'E', time: '3h', type: 'outgoing', location: 'Kisumu, Kenya', avatarColor: '#3B82F6', phone: '+254734567890' },
+    { id: '4', name: 'Unknown', initial: '?', time: 'Yesterday', type: 'missed', location: 'Kenya', avatarColor: '#6B7280', phone: '+254745678901' },
+    { id: '5', name: 'Dad', initial: 'D', time: 'Yesterday', type: 'incoming', location: 'Nairobi, Kenya', avatarColor: '#8B5CF6', phone: '+254756789012' },
   ];
 
   const getCallIcon = (type: string) => {
@@ -41,11 +44,37 @@ export default function RecentsScreen() {
   };
 
   const handleCallDetail = (call: any) => {
-    router.push('/(modals)/call-detail');
+    router.push({
+      pathname: '/(modals)/call-detail',
+      params: {
+        callId: call.id,
+        name: call.name,
+        phone: call.phone,
+      }
+    });
   };
 
-  const handleMakeCall = (call: any) => {
-    router.push('/(modals)/active-call');
+  const handleMakeCall = async (call: any) => {
+    if (!isInitialized) {
+      Alert.alert('Error', 'Calling service not ready. Please wait...');
+      return;
+    }
+
+    if (!call.phone) {
+      Alert.alert('Error', 'Phone number not available');
+      return;
+    }
+
+    try {
+      console.log(`📞 Calling ${call.name} at ${call.phone}`);
+      await makeCall(call.phone, {
+        callerName: call.name,
+      });
+      // Navigation to active-call handled by TwilioContext
+    } catch (error: any) {
+      console.error('❌ Call failed:', error);
+      Alert.alert('Call Failed', error?.message || 'Unable to place call');
+    }
   };
 
   const renderCallItem = ({ item }: any) => (

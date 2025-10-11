@@ -1,29 +1,60 @@
-import { StyleSheet, FlatList, TouchableOpacity, View, TextInput } from 'react-native';
+import { StyleSheet, FlatList, TouchableOpacity, View, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
+import { useTwilioContext } from '@/contexts/twilio-context';
 
 export default function ContactsScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
+  const { makeCall, isInitialized } = useTwilioContext();
+
   const contacts = [
-    { id: '1', name: 'Alice Johnson', phone: '+254 712 345 678', favorite: true, avatarColor: '#EC4899' },
-    { id: '2', name: 'Bob Williams', phone: '+254 723 456 789', favorite: false, avatarColor: '#3B82F6' },
-    { id: '3', name: 'Carol Davis', phone: '+254 734 567 890', favorite: true, avatarColor: '#F59E0B' },
-    { id: '4', name: 'David Brown', phone: '+254 745 678 901', favorite: false, avatarColor: '#8B5CF6' },
+    { id: '1', name: 'Alice Johnson', phone: '+254712345678', favorite: true, avatarColor: '#EC4899' },
+    { id: '2', name: 'Bob Williams', phone: '+254723456789', favorite: false, avatarColor: '#3B82F6' },
+    { id: '3', name: 'Carol Davis', phone: '+254734567890', favorite: true, avatarColor: '#F59E0B' },
+    { id: '4', name: 'David Brown', phone: '+254745678901', favorite: false, avatarColor: '#8B5CF6' },
   ];
 
   const handleContactDetail = (contact: any) => {
-    router.push('/(modals)/contact-detail');
+    router.push({
+      pathname: '/(modals)/contact-detail',
+      params: {
+        contactId: contact.id,
+        name: contact.name,
+        phone: contact.phone,
+        favorite: contact.favorite,
+        avatarColor: contact.avatarColor,
+      }
+    });
   };
 
-  const handleMakeCall = (contact: any) => {
-    router.push('/(modals)/active-call');
+  const handleMakeCall = async (contact: any) => {
+    if (!isInitialized) {
+      Alert.alert('Error', 'Calling service not ready. Please wait...');
+      return;
+    }
+
+    if (!contact.phone) {
+      Alert.alert('Error', 'Phone number not available');
+      return;
+    }
+
+    try {
+      console.log(`📞 Calling ${contact.name} at ${contact.phone}`);
+      await makeCall(contact.phone, {
+        callerName: contact.name,
+      });
+      // Navigation to active-call handled by TwilioContext
+    } catch (error: any) {
+      console.error('❌ Call failed:', error);
+      Alert.alert('Call Failed', error?.message || 'Unable to place call');
+    }
   };
 
   const handleAddContact = () => {

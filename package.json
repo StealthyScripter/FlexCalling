@@ -1,0 +1,45 @@
+{
+  "name": "flexcalling",
+  "version": "1.0.0",
+  "description": "FlexCalling - AI-Powered International Calling Platform",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "dev": "concurrently -n \"NGROK,SERVER,CLIENT\" -c \"cyan,green,yellow\" \"npm run ngrok\" \"npm run server:dev\" \"npm run client:dev\"",
+    "dev:tunnel": "concurrently -n \"NGROK,SERVER,CLIENT\" -c \"cyan,green,yellow\" \"npm run ngrok\" \"npm run server:dev\" \"npm run client:tunnel-no-reverse\"",
+    "dev:web": "concurrently -n \"NGROK,SERVER,CLIENT\" -c \"cyan,green,yellow\" \"npm run ngrok\" \"npm run server:dev\" \"npm run client:web\"",
+    "ngrok": "ngrok http 3000",
+    "server:dev": "cd server && npm run dev",
+    "server:build": "cd server && npm run build",
+    "server:start": "cd server && npm start",
+    "client:dev": "cd client && npx expo start",
+    "client:tunnel": "cd client && npx expo start --tunnel",
+    "client:tunnel-no-reverse": "cd client && EXPO_NO_METRO_LAZY=1 npx expo start --tunnel --no-dev-client",
+    "client:web": "cd client && npx expo start --web",
+    "client:android": "cd client && npx expo start --android",
+    "client:ios": "cd client && npx expo start --ios",
+    "client:adb": "cd client && npx expo run:android",
+    "android": "concurrently -n \"NGROK,SERVER,CLIENT\" -c \"cyan,green,yellow\" \"npm run ngrok\" \"npm run server:dev\" \"npm run client:android\"",
+    "android:build": "concurrently -n \"NGROK,SERVER,CLIENT\" -c \"cyan,green,yellow\" \"npm run ngrok\" \"npm run server:dev\" \"npm run client:adb\"",
+    "ios": "concurrently -n \"NGROK,SERVER,CLIENT\" -c \"cyan,green,yellow\" \"npm run ngrok\" \"npm run server:dev\" \"npm run client:ios\"",
+    "expo": "concurrently -n \"NGROK,SERVER,CLIENT\" -c \"cyan,green,yellow\" \"npm run ngrok\" \"npm run server:dev\" \"npm run client:tunnel-no-reverse\"",
+    "web": "concurrently -n \"NGROK,SERVER,CLIENT\" -c \"cyan,green,yellow\" \"npm run ngrok\" \"npm run server:dev\" \"npm run client:web\"",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rm -rf node_modules client/node_modules server/node_modules client/.expo server/dist",
+    "clean:install": "npm run clean && npm run install:all",
+    "check:adb": "adb devices",
+    "kill:metro": "lsof -ti:8081 | xargs kill -9 || true",
+    "restart": "npm run kill:metro && npm run dev:tunnel"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

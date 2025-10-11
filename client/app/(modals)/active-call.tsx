@@ -1,18 +1,39 @@
 import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
-import { useState } from 'react';
+import { useTwilioContext } from '@/contexts/twilio-context';
+import { useEffect } from 'react';
 
 export default function ActiveCallScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
-  const [isMuted, setIsMuted] = useState(false);
-  const [isSpeaker, setIsSpeaker] = useState(false);
+
+  const {
+    callState,
+    hangup,
+    toggleMute,
+    toggleSpeaker,
+    formatDuration,
+  } = useTwilioContext();
+
+  // Get call information from params or callState
+  const phoneNumber = (params.to as string) || callState.to || 'Unknown';
+  const callerName = (params.callerName as string) || 'Unknown';
+  const from = (params.from as string) || callState.from || '';
+
+  // Get initials for avatar
+  const getInitials = () => {
+    if (callerName && callerName !== 'Unknown') {
+      return callerName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    return phoneNumber[0] || '?';
+  };
 
   const handleEndCall = () => {
     Alert.alert(
@@ -26,14 +47,42 @@ export default function ActiveCallScreen() {
         {
           text: 'End Call',
           style: 'destructive',
-          onPress: () => {
-            // Navigate back to previous screen
-            router.back();
+          onPress: async () => {
+            try {
+              await hangup();
+              router.back();
+            } catch (error) {
+              console.error('Hangup error:', error);
+              router.back();
+            }
           }
         }
       ]
     );
   };
+
+  const handleToggleMute = async () => {
+    try {
+      await toggleMute();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to toggle mute');
+    }
+  };
+
+  const handleToggleSpeaker = async () => {
+    try {
+      await toggleSpeaker();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to toggle speaker');
+    }
+  };
+
+  // Auto-close if call ends
+  useEffect(() => {
+    if (!callState.isActive && callState.callState === null) {
+      router.back();
+    }
+  }, [callState.isActive, callState.callState]);
 
   return (
     <ThemedView style={styles.container}>
@@ -42,12 +91,14 @@ export default function ActiveCallScreen() {
       <View style={styles.callerInfo}>
         <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.callerCard}>
           <View style={[styles.callerAvatar, { backgroundColor: '#8B5CF6' }]}>
-            <ThemedText style={styles.callerInitial}>JD</ThemedText>
+            <ThemedText style={styles.callerInitial}>{getInitials()}</ThemedText>
           </View>
-          <ThemedText type="title" style={styles.callerName}>John Doe</ThemedText>
+          <ThemedText type="title" style={styles.callerName}>
+            {callerName !== 'Unknown' ? callerName : phoneNumber}
+          </ThemedText>
           <View style={styles.durationBadge}>
             <View style={styles.pulseDot} />
-            <ThemedText style={styles.callDuration}>05:32</ThemedText>
+            <ThemedText style={styles.callDuration}>{formatDuration(callState.duration)}</ThemedText>
           </View>
           <View style={styles.rateBadge}>
             <IconSymbol name="dollarsign.circle.fill" size={16} color="#10B981" />
@@ -59,15 +110,15 @@ export default function ActiveCallScreen() {
       <View style={styles.controls}>
         <View style={styles.controlRow}>
           <TouchableOpacity
-            style={[styles.controlButton, isMuted && styles.controlButtonActive]}
-            onPress={() => setIsMuted(!isMuted)}
+            style={[styles.controlButton, callState.isMuted && styles.controlButtonActive]}
+            onPress={handleToggleMute}
           >
-            <IconSymbol name={isMuted ? "mic.slash.fill" : "mic.fill"} size={24} color="#fff" />
+            <IconSymbol name={callState.isMuted ? "mic.slash.fill" : "mic.fill"} size={24} color="#fff" />
             <ThemedText style={styles.controlLabel}>Mute</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.controlButton, isSpeaker && styles.controlButtonActive]}
-            onPress={() => setIsSpeaker(!isSpeaker)}
+            style={[styles.controlButton, callState.isSpeakerOn && styles.controlButtonActive]}
+            onPress={handleToggleSpeaker}
           >
             <IconSymbol name="speaker.wave.3.fill" size={24} color="#fff" />
             <ThemedText style={styles.controlLabel}>Speaker</ThemedText>

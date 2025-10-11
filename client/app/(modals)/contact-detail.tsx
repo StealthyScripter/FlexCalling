@@ -1,15 +1,25 @@
-import { StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
+import { useTwilioContext } from '@/contexts/twilio-context';
 
 export default function ContactDetailScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
+
+  const { makeCall, isInitialized } = useTwilioContext();
+
+  // Get contact data from params
+  const contactName = (params.name as string) || 'Unknown';
+  const contactPhone = (params.phone as string) || '';
+  const avatarColor = (params.avatarColor as string) || '#F59E0B';
+  const isFavorite = params.favorite === 'true';
 
   const callHistory = [
     { id: '1', date: 'Today, 2:30 PM', duration: '12:45', cost: '$0.64', type: 'outgoing' },
@@ -17,26 +27,59 @@ export default function ContactDetailScreen() {
     { id: '3', date: 'Dec 28, 11:30 AM', duration: '25:10', cost: '$1.26', type: 'outgoing' },
   ];
 
-  const handleMakeCall = () => {
-    router.push('/(modals)/active-call');
+  const handleMakeCall = async () => {
+    if (!isInitialized) {
+      Alert.alert('Error', 'Calling service not ready. Please wait...');
+      return;
+    }
+
+    if (!contactPhone) {
+      Alert.alert('Error', 'Phone number not available');
+      return;
+    }
+
+    try {
+      console.log(`📞 Calling ${contactName} at ${contactPhone}`);
+      await makeCall(contactPhone, {
+        callerName: contactName,
+      });
+      // Navigation to active-call handled by TwilioContext
+    } catch (error: any) {
+      console.error('❌ Call failed:', error);
+      Alert.alert('Call Failed', error?.message || 'Unable to place call');
+    }
   };
 
   const handleSendMessage = () => {
-    // TODO: Implement messaging
-    console.log('Send message');
+    Alert.alert('Coming Soon', 'SMS feature will be available soon');
   };
 
   const handleVideoCall = () => {
-    // TODO: Implement video call
-    console.log('Video call');
+    Alert.alert('Coming Soon', 'Video calling will be available soon');
   };
 
   const handleCallDetail = (call: any) => {
-    router.push('/(modals)/call-detail');
+    router.push({
+      pathname: '/(modals)/call-detail',
+      params: {
+        callId: call.id,
+        name: contactName,
+        phone: contactPhone,
+      }
+    });
   };
 
   const handleEditContact = () => {
-    router.push('/(modals)/edit-contact');
+    router.push({
+      pathname: '/(modals)/edit-contact',
+      params: {
+        contactId: params.contactId,
+        name: contactName,
+        phone: contactPhone,
+        favorite: String(isFavorite),
+        avatarColor: avatarColor,
+      }
+    });
   };
 
   return (
@@ -55,13 +98,13 @@ export default function ContactDetailScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.headerCard}>
-          <View style={[styles.avatar, { backgroundColor: '#F59E0B' }]}>
-            <ThemedText style={styles.avatarText}>JD</ThemedText>
+          <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
+            <ThemedText style={styles.avatarText}>{contactName[0]?.toUpperCase()}</ThemedText>
           </View>
-          <ThemedText type="title" style={styles.name}>John Doe</ThemedText>
+          <ThemedText type="title" style={styles.name}>{contactName}</ThemedText>
           <View style={styles.phoneBadge}>
             <IconSymbol name="phone.fill" size={14} color="#10B981" />
-            <ThemedText style={styles.phone}>+254 712 345 678</ThemedText>
+            <ThemedText style={styles.phone}>{contactPhone}</ThemedText>
           </View>
 
           <View style={styles.actions}>

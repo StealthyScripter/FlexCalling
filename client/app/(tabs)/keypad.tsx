@@ -7,35 +7,23 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { PhoneInput } from '@/components/phone-input';
 import { useState, useEffect } from 'react';
-import { useTwilioVoice } from '@/hooks/use-twilio-voice';
-
-// Configuration - update with your backend URL
-const BACKEND_URL = __DEV__
-  ? 'http://localhost:3000' // Development
-  : 'https://your-production-backend.com'; // Production
+import { useTwilioContext } from '@/contexts/twilio-context';
 
 export default function KeypadScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [isInitializing, setIsInitializing] = useState(true);
 
-  // Initialize Twilio Voice SDK
+  // Use global Twilio context
   const {
     isInitialized,
-    isInitializing: twilioInitializing,
+    isInitializing,
     error: twilioError,
     callState,
     incomingCall,
     makeCall,
-    hangup,
-    acceptIncomingCall,
-    rejectIncomingCall,
-  } = useTwilioVoice({
-    backendUrl: BACKEND_URL,
-    userId: 'user-123', // TODO: Get from auth context
-  });
+  } = useTwilioContext();
 
   const keys = [
     ['1', '2', '3'],
@@ -43,21 +31,6 @@ export default function KeypadScreen() {
     ['7', '8', '9'],
     ['*', '0', '#'],
   ];
-
-  // Handle initialization
-  useEffect(() => {
-    if (!twilioInitializing) {
-      setIsInitializing(false);
-
-      if (twilioError) {
-        Alert.alert(
-          'Initialization Error',
-          'Failed to initialize calling service. Please restart the app.',
-          [{ text: 'OK' }]
-        );
-      }
-    }
-  }, [twilioInitializing, twilioError]);
 
   // Handle incoming calls - show modal
   useEffect(() => {
@@ -133,7 +106,7 @@ export default function KeypadScreen() {
 
       // Make the call using Twilio
       await makeCall(formattedNumber, {
-        callerName: 'FlexCalling User', // TODO: Get from user profile
+        callerName: 'FlexCalling User',
       });
 
       // The useEffect hook will automatically navigate to active-call screen
@@ -178,7 +151,6 @@ export default function KeypadScreen() {
           <TouchableOpacity
             style={styles.retryButton}
             onPress={() => {
-              setIsInitializing(true);
               // Trigger re-initialization by remounting component
               router.replace('/(tabs)/keypad');
             }}
