@@ -5,14 +5,31 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useCall } from '@/contexts/call-context';
 
 export default function ActiveCallScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
-  const [isMuted, setIsMuted] = useState(false);
-  const [isSpeaker, setIsSpeaker] = useState(false);
+
+  // Get call data from context
+  const { callData, endCall, toggleMute, toggleSpeaker, audioDevice } = useCall();
+
+  const call = callData.call;
+  const duration = callData.callDuration;
+  const cost = callData.estimatedCost;
+
+  // Get control states
+  const isMuted = call?.isMuted || false;
+  const isSpeaker = audioDevice?.type === 'speaker';
+
+  // Format duration as MM:SS
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleEndCall = () => {
     Alert.alert(
@@ -26,14 +43,51 @@ export default function ActiveCallScreen() {
         {
           text: 'End Call',
           style: 'destructive',
-          onPress: () => {
-            // Navigate back to previous screen
-            router.back();
+          onPress: async () => {
+            try {
+              await endCall();
+              router.back();
+            } catch (error) {
+              console.error('Failed to end call:', error);
+              router.back();
+            }
           }
         }
       ]
     );
   };
+
+  const handleToggleMute = async () => {
+    try {
+      await toggleMute();
+    } catch (error) {
+      console.error('Failed to toggle mute:', error);
+    }
+  };
+
+  const handleToggleSpeaker = async () => {
+    try {
+      await toggleSpeaker();
+    } catch (error) {
+      console.error('Failed to toggle speaker:', error);
+    }
+  };
+
+  // Redirect if no active call
+  useEffect(() => {
+    if (!call) {
+      router.back();
+    }
+  }, [call]);
+
+  // Don't render if no call
+  if (!call) {
+    return null;
+  }
+
+  // Get display name (use phone number as fallback)
+  const displayName = call.to;
+  const displayInitial = displayName[0] || '?';
 
   return (
     <ThemedView style={styles.container}>
@@ -42,38 +96,64 @@ export default function ActiveCallScreen() {
       <View style={styles.callerInfo}>
         <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.callerCard}>
           <View style={[styles.callerAvatar, { backgroundColor: '#8B5CF6' }]}>
-            <ThemedText style={styles.callerInitial}>JD</ThemedText>
+            <ThemedText style={styles.callerInitial}>{displayInitial}</ThemedText>
           </View>
-          <ThemedText type="title" style={styles.callerName}>John Doe</ThemedText>
+          <ThemedText type="title" style={styles.callerName}>
+            {displayName}
+          </ThemedText>
+
+          {/* Duration Badge with Pulse Animation */}
           <View style={styles.durationBadge}>
             <View style={styles.pulseDot} />
-            <ThemedText style={styles.callDuration}>05:32</ThemedText>
+            <ThemedText style={styles.callDuration}>
+              {formatDuration(duration)}
+            </ThemedText>
           </View>
+
+          {/* Cost Badge */}
           <View style={styles.rateBadge}>
             <IconSymbol name="dollarsign.circle.fill" size={16} color="#10B981" />
-            <ThemedText style={styles.callRate}>$0.05/min to Kenya</ThemedText>
+            <ThemedText style={styles.callRate}>
+              ${cost.toFixed(2)} • ${callData.ratePerMinute}/min
+            </ThemedText>
+          </View>
+
+          {/* Call State Indicator */}
+          <View style={styles.stateBadge}>
+            <ThemedText style={styles.stateText}>
+              {call.state === 'connecting' ? 'Connecting...' :
+               call.state === 'ringing' ? 'Ringing...' : 'Connected'}
+            </ThemedText>
           </View>
         </BlurView>
       </View>
 
       <View style={styles.controls}>
         <View style={styles.controlRow}>
+          {/* Mute Button */}
           <TouchableOpacity
             style={[styles.controlButton, isMuted && styles.controlButtonActive]}
-            onPress={() => setIsMuted(!isMuted)}
+            onPress={handleToggleMute}
           >
-            <IconSymbol name={isMuted ? "mic.slash.fill" : "mic.fill"} size={24} color="#fff" />
+            <IconSymbol
+              name={isMuted ? "mic.slash.fill" : "mic.fill"}
+              size={24}
+              color="#fff"
+            />
             <ThemedText style={styles.controlLabel}>Mute</ThemedText>
           </TouchableOpacity>
+
+          {/* Speaker Button */}
           <TouchableOpacity
             style={[styles.controlButton, isSpeaker && styles.controlButtonActive]}
-            onPress={() => setIsSpeaker(!isSpeaker)}
+            onPress={handleToggleSpeaker}
           >
             <IconSymbol name="speaker.wave.3.fill" size={24} color="#fff" />
             <ThemedText style={styles.controlLabel}>Speaker</ThemedText>
           </TouchableOpacity>
         </View>
 
+        {/* End Call Button */}
         <TouchableOpacity style={styles.endCallButton} onPress={handleEndCall}>
           <IconSymbol name="phone.down.fill" size={32} color="#fff" />
         </TouchableOpacity>
@@ -94,8 +174,10 @@ const styles = StyleSheet.create({
   durationBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(16, 185, 129, 0.15)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, marginBottom: 12 },
   pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' },
   callDuration: { fontSize: 20, fontWeight: '600', color: '#10B981' },
-  rateBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12 },
+  rateBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12, marginBottom: 8 },
   callRate: { fontSize: 14, opacity: 0.8 },
+  stateBadge: { backgroundColor: 'rgba(59, 130, 246, 0.1)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
+  stateText: { fontSize: 12, color: '#3B82F6', fontWeight: '600' },
   controls: { alignItems: 'center', gap: 32, marginBottom: 40 },
   controlRow: { flexDirection: 'row', gap: 32 },
   controlButton: { width: 75, height: 75, borderRadius: 38, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center', gap: 4 },

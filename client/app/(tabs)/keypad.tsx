@@ -7,12 +7,16 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { PhoneInput } from '@/components/phone-input';
 import { useState } from 'react';
+import { useCall } from '@/contexts/call-context';
 
 export default function KeypadScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
   const [phoneNumber, setPhoneNumber] = useState('');
+
+  // Use call context
+  const { makeCall, isDeviceReady } = useCall();
 
   const keys = [
     ['1', '2', '3'],
@@ -29,14 +33,34 @@ export default function KeypadScreen() {
     setPhoneNumber(prev => prev.slice(0, -1));
   };
 
-  const handleMakeCall = () => {
+  const handleMakeCall = async () => {
     if (!phoneNumber) {
       Alert.alert('Error', 'Please enter a phone number');
       return;
     }
 
-    // Navigate to active call screen
-    router.push('/(modals)/active-call');
+    if (!isDeviceReady) {
+      Alert.alert('Error', 'Device not ready. Please try again.');
+      return;
+    }
+
+    try {
+      // Format number (add Kenya prefix if needed)
+      let formattedNumber = phoneNumber;
+      if (!phoneNumber.startsWith('+')) {
+        // Assume Kenya number if no country code
+        formattedNumber = '+254' + phoneNumber.replace(/^0/, '');
+      }
+
+      // Make the call using SDK
+      await makeCall(formattedNumber);
+
+      // Navigate to active call screen
+      router.push('/(modals)/active-call');
+    } catch (error: any) {
+      console.error('Failed to make call:', error);
+      Alert.alert('Error', error.message || 'Failed to make call');
+    }
   };
 
   return (
@@ -75,14 +99,26 @@ export default function KeypadScreen() {
       <View style={styles.actionButtons}>
         <View style={styles.spacer} />
         <TouchableOpacity
-          style={[styles.callButton, !phoneNumber && styles.callButtonDisabled]}
-          disabled={!phoneNumber}
+          style={[
+            styles.callButton,
+            (!phoneNumber || !isDeviceReady) && styles.callButtonDisabled
+          ]}
+          disabled={!phoneNumber || !isDeviceReady}
           onPress={handleMakeCall}
         >
           <IconSymbol name="phone.fill" size={28} color="#fff" />
         </TouchableOpacity>
         <View style={styles.spacer} />
       </View>
+
+      {/* Device Status Indicator */}
+      {!isDeviceReady && (
+        <View style={styles.statusBanner}>
+          <ThemedText style={styles.statusText}>
+            Connecting to network...
+          </ThemedText>
+        </View>
+      )}
     </ThemedView>
   );
 }
@@ -103,4 +139,6 @@ const styles = StyleSheet.create({
   callButton: { width: 70, height: 70, borderRadius: 35, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center', shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8, marginTop: 5 },
   callButtonDisabled: { backgroundColor: '#9CA3AF', shadowOpacity: 0 },
   spacer: { width: 56 },
+  statusBanner: { position: 'absolute', bottom: 100, left: 20, right: 20, backgroundColor: 'rgba(245, 158, 11, 0.9)', padding: 12, borderRadius: 12 },
+  statusText: { textAlign: 'center', color: '#fff', fontWeight: '600' },
 });

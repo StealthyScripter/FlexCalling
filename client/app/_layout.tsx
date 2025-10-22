@@ -5,6 +5,7 @@ import 'react-native-reanimated';
 
 import { ThemeProvider as CustomThemeProvider } from '@/contexts/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { CallProvider } from '@/contexts/call-context';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
@@ -41,7 +42,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <CustomThemeProvider>
-      <RootLayoutNav />
+      <CallProvider>
+        <RootLayoutNav />
+      </CallProvider>
     </CustomThemeProvider>
   );
 }

@@ -6,25 +6,35 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
+import { useCall } from '@/contexts/call-context';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { registerDevice } = useCall();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
   useEffect(() => {
-    // Simulate loading/checking auth
-    const timer = setTimeout(() => {
-      // TODO: Check if user is authenticated
+    const initialize = async () => {
+      // Check authentication
       const isAuthenticated = false; // Replace with actual auth check
 
       if (isAuthenticated) {
+        // Register device with Twilio
+        try {
+          const token = 'YOUR_ACCESS_TOKEN'; // Get from backend
+          await registerDevice(token);
+        } catch (error) {
+          console.error('Failed to register device:', error);
+        }
+
         router.replace('/(tabs)');
       } else {
         router.replace('/(auth)/onboarding');
       }
-    }, 2000);
+    };
 
+    const timer = setTimeout(initialize, 2000);
     return () => clearTimeout(timer);
   }, []);
 

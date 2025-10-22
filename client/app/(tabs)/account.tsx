@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/contexts/theme-context';
 import { BlurView } from 'expo-blur';
+import { twilioVoice } from '@/services/mock-twilio.service';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -28,6 +29,11 @@ export default function AccountScreen() {
       console.log(`${label} - Not implemented yet`);
     }
   };
+
+  const handleTestIncomingCall = () => {
+  twilioVoice.simulateIncomingCall('+254712345678');
+  router.push('/(modals)/incoming-call');
+};
 
   return (
     <ThemedView style={styles.container}>
@@ -55,6 +61,9 @@ export default function AccountScreen() {
             </View>
           </View>
           <IconSymbol name="chevron.right" size={20} color="#8B5CF6" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleTestIncomingCall}>
+          <ThemedText>Test Incoming Call</ThemedText>
         </TouchableOpacity>
 
         <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.profileCard}>
