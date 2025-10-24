@@ -36,7 +36,7 @@ export default function SplashScreen() {
 
     const timer = setTimeout(initialize, 2000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [registerDevice, router]);
 
   return (
     <ThemedView style={styles.container}>

@@ -8,14 +8,19 @@ import { BlurView } from 'expo-blur';
 import { PhoneInput } from '@/components/phone-input';
 import { useState } from 'react';
 import { useCall } from '@/contexts/call-context';
+import { APIService } from '@/services/api.service';
+
+// Config for default country
+const DEFAULT_COUNTRY = { name: 'Kenya', code: '+254' };
 
 export default function KeypadScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
-  const [phoneNumber, setPhoneNumber] = useState('');
 
-  // Use call context
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isCalling, setIsCalling] = useState(false);
+
   const { makeCall, isDeviceReady } = useCall();
 
   const keys = [
@@ -34,6 +39,8 @@ export default function KeypadScreen() {
   };
 
   const handleMakeCall = async () => {
+    if (isCalling) return;
+
     if (!phoneNumber) {
       Alert.alert('Error', 'Please enter a phone number');
       return;
@@ -44,22 +51,35 @@ export default function KeypadScreen() {
       return;
     }
 
+    setIsCalling(true);
+
     try {
       // Format number (add Kenya prefix if needed)
       let formattedNumber = phoneNumber;
       if (!phoneNumber.startsWith('+')) {
-        // Assume Kenya number if no country code
-        formattedNumber = '+254' + phoneNumber.replace(/^0/, '');
+        formattedNumber = DEFAULT_COUNTRY.code + phoneNumber.replace(/^0/, '');
       }
 
       // Make the call using SDK
       await makeCall(formattedNumber);
+
+      // Save to mock call logs
+      APIService.saveCallLog({
+        call: { from: DEFAULT_COUNTRY.code, to: formattedNumber, state: 'connected', isMuted: false, isOnHold: false, direction: 'outgoing', callSid: Date.now().toString() },
+        incomingCallInvite: null,
+        callStartTime: new Date(),
+        callDuration: 0,
+        ratePerMinute: 0.15,
+        estimatedCost: 0,
+      });
 
       // Navigate to active call screen
       router.push('/(modals)/active-call');
     } catch (error: any) {
       console.error('Failed to make call:', error);
       Alert.alert('Error', error.message || 'Failed to make call');
+    } finally {
+      setIsCalling(false);
     }
   };
 
@@ -70,7 +90,7 @@ export default function KeypadScreen() {
       <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.phoneNumberCard}>
         <View style={styles.locationBadge}>
           <IconSymbol name="globe" size={14} color="#10B981" />
-          <ThemedText style={styles.locationText}>Kenya (+254)</ThemedText>
+          <ThemedText style={styles.locationText}>{DEFAULT_COUNTRY.name} ({DEFAULT_COUNTRY.code})</ThemedText>
         </View>
         <PhoneInput
           value={phoneNumber}
@@ -82,7 +102,7 @@ export default function KeypadScreen() {
       <View style={styles.keypadContainer}>
         {keys.map((row, rowIndex) => (
           <View key={rowIndex} style={styles.keyRow}>
-            {row.map((key) => (
+            {row.map(key => (
               <BlurView key={key} intensity={isDark ? 15 : 40} tint={colorScheme} style={styles.key}>
                 <TouchableOpacity
                   style={styles.keyTouchable}
@@ -97,21 +117,24 @@ export default function KeypadScreen() {
       </View>
 
       <View style={styles.actionButtons}>
-        <View style={styles.spacer} />
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+          <IconSymbol name="delete.left.fill" size={28} color={isDark ? '#fff' : '#000'} />
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[
             styles.callButton,
-            (!phoneNumber || !isDeviceReady) && styles.callButtonDisabled
+            (!phoneNumber || !isDeviceReady || isCalling) && styles.callButtonDisabled
           ]}
-          disabled={!phoneNumber || !isDeviceReady}
+          disabled={!phoneNumber || !isDeviceReady || isCalling}
           onPress={handleMakeCall}
         >
           <IconSymbol name="phone.fill" size={28} color="#fff" />
         </TouchableOpacity>
+
         <View style={styles.spacer} />
       </View>
 
-      {/* Device Status Indicator */}
       {!isDeviceReady && (
         <View style={styles.statusBanner}>
           <ThemedText style={styles.statusText}>
@@ -135,9 +158,10 @@ const styles = StyleSheet.create({
   key: { flex: 1, aspectRatio: 1, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
   keyTouchable: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   keyText: { fontSize: 28 },
-  actionButtons: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingHorizontal: 20 },
-  callButton: { width: 70, height: 70, borderRadius: 35, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center', shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8, marginTop: 5 },
+  actionButtons: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingHorizontal: 20, marginTop: 10 },
+  callButton: { width: 70, height: 70, borderRadius: 35, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center', shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
   callButtonDisabled: { backgroundColor: '#9CA3AF', shadowOpacity: 0 },
+  deleteButton: { width: 70, height: 70, borderRadius: 35, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
   spacer: { width: 56 },
   statusBanner: { position: 'absolute', bottom: 100, left: 20, right: 20, backgroundColor: 'rgba(245, 158, 11, 0.9)', padding: 12, borderRadius: 12 },
   statusText: { textAlign: 'center', color: '#fff', fontWeight: '600' },

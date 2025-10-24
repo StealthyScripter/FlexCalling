@@ -4,6 +4,7 @@ import {
   CallUIData,
   ConnectOptions,
   AudioDevice,
+  CallConnectedEvent,
 } from '@/types/twilio';
 
 interface CallContextType {
@@ -41,7 +42,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
   });
   const [audioDevice, setAudioDevice] = useState<AudioDevice | null>(null);
   const [availableAudioDevices, setAvailableAudioDevices] = useState<AudioDevice[]>([]);
-  // Fix: Use number type for React Native setInterval
+
   const [durationInterval, setDurationInterval] = useState<number | null>(null);
 
   // ============================================
@@ -86,7 +87,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       }));
     };
 
-    const handleCallConnected = (event: any) => {
+    const handleCallConnected = (event: CallConnectedEvent) => {
       console.log('Call connected:', event.call);
       const startTime = new Date();
 

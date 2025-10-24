@@ -5,29 +5,39 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
+import { useState, useEffect } from 'react';
+import { APIService, Contact } from '@/services/api.service';
+import { useCall } from '@/contexts/call-context';
 
 export default function ContactsScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
+  const { makeCall, isDeviceReady } = useCall();
+  const [contacts, setContacts] = useState<Contact[]>([]);
 
-  const contacts = [
-    { id: '1', name: 'Alice Johnson', phone: '+254 712 345 678', favorite: true, avatarColor: '#EC4899' },
-    { id: '2', name: 'Bob Williams', phone: '+254 723 456 789', favorite: false, avatarColor: '#3B82F6' },
-    { id: '3', name: 'Carol Davis', phone: '+254 734 567 890', favorite: true, avatarColor: '#F59E0B' },
-    { id: '4', name: 'David Brown', phone: '+254 745 678 901', favorite: false, avatarColor: '#8B5CF6' },
-  ];
+  const fetchContacts = () => setContacts(APIService.getContacts());
 
-  const handleContactDetail = (contact: any) => {
-    router.push('/(modals)/contact-detail');
-  };
+  useEffect(() => {
+    fetchContacts();
+  }, []);
 
-  const handleMakeCall = (contact: any) => {
-    router.push('/(modals)/active-call');
+  const handleContactDetail = (contact: Contact) => {
+    router.push('/(modals)/contact-detail'); // Optionally pass contact.id as param
   };
 
   const handleAddContact = () => {
     router.push('/(modals)/add-contact');
+  };
+
+  const handleMakeCall = async (contact: Contact) => {
+    if (!isDeviceReady) return;
+    try {
+      await makeCall(contact.phone);
+      router.push('/(modals)/active-call');
+    } catch (error) {
+      console.error('Failed to make call:', error);
+    }
   };
 
   return (

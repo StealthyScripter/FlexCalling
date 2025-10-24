@@ -5,24 +5,31 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
+import { useEffect, useState } from 'react';
+import { APIService } from '@/services/api.service';
+import { CallUIData } from '@/types/twilio';
+import { useCall } from '@/contexts/call-context';
 
 export default function RecentsScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
-  const recentCalls = [
-    { id: '1', name: 'Sarah Chen', initial: 'S', time: '2m', type: 'missed', location: 'Nairobi, Kenya', avatarColor: '#EC4899' },
-    { id: '2', name: 'Mike Johnson', initial: 'M', time: '1h', type: 'incoming', location: 'Mombasa, Kenya', avatarColor: '#10B981' },
-  ];
+  const { makeCall, isDeviceReady } = useCall();
+  const [callLogs, setCallLogs] = useState<CallUIData[]>([]);
 
-  const earlierCalls = [
-    { id: '3', name: 'Emma Wilson', initial: 'E', time: '3h', type: 'outgoing', location: 'Kisumu, Kenya', avatarColor: '#3B82F6' },
-    { id: '4', name: 'Unknown', initial: '?', time: 'Yesterday', type: 'missed', location: 'Kenya', avatarColor: '#6B7280' },
-    { id: '5', name: 'Dad', initial: 'D', time: 'Yesterday', type: 'incoming', location: 'Nairobi, Kenya', avatarColor: '#8B5CF6' },
-  ];
+  // Fetch call logs from mock DB
+  const fetchCallLogs = () => {
+    setCallLogs(APIService.getCallLogs());
+  };
 
-  const getCallIcon = (type: string) => {
+  useEffect(() => {
+    fetchCallLogs();
+  }, []);
+
+  const getCallIcon = (call: CallUIData) => {
+    const type = call.call?.direction === 'outgoing' ? 'outgoing' :
+                 call.call?.direction === 'incoming' ? 'incoming' : 'missed';
     switch(type) {
       case 'outgoing': return 'phone.arrow.up.right.fill';
       case 'incoming': return 'phone.arrow.down.left.fill';
@@ -31,7 +38,9 @@ export default function RecentsScreen() {
     }
   };
 
-  const getCallColor = (type: string) => {
+  const getCallColor = (call: CallUIData) => {
+    const type = call.call?.direction === 'outgoing' ? 'outgoing' :
+                 call.call?.direction === 'incoming' ? 'incoming' : 'missed';
     switch(type) {
       case 'outgoing': return '#10B981';
       case 'incoming': return '#3B82F6';
@@ -40,41 +49,79 @@ export default function RecentsScreen() {
     }
   };
 
-  const handleCallDetail = (call: any) => {
-    router.push('/(modals)/call-detail');
+  const handleCallDetail = (call: CallUIData) => {
+    router.push('/(modals)/call-detail'); // You can pass call ID via params if needed
   };
 
-  const handleMakeCall = (call: any) => {
-    router.push('/(modals)/active-call');
+  const handleMakeCall = async (call: CallUIData) => {
+    if (!isDeviceReady) return;
+    if (!call.call?.to) return;
+    try {
+      await makeCall(call.call.to);
+      router.push('/(modals)/active-call');
+    } catch (error) {
+      console.error('Failed to make call:', error);
+    }
   };
 
-  const renderCallItem = ({ item }: any) => (
-    <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.callCard}>
-      <TouchableOpacity
-        style={styles.callContent}
-        onPress={() => handleCallDetail(item)}
-      >
-        <View style={[styles.avatar, { backgroundColor: item.avatarColor }]}>
-          <ThemedText style={styles.avatarText}>{item.initial}</ThemedText>
-        </View>
-        <View style={styles.callInfo}>
-          <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-          <View style={styles.callMeta}>
-            <View style={[styles.callBadge, { backgroundColor: getCallColor(item.type) + '20' }]}>
-              <IconSymbol name={getCallIcon(item.type)} size={12} color={getCallColor(item.type)} />
-              <ThemedText style={[styles.callTime, { color: getCallColor(item.type) }]}>{item.time}</ThemedText>
+  const renderCallItem = (call: CallUIData) => {
+    const displayName = call.call?.to || 'Unknown';
+    const initial = displayName[0]?.toUpperCase() || '?';
+    const time = call.callStartTime ? timeSince(call.callStartTime) : 'Unknown';
+
+    return (
+      <BlurView key={call.call?.callSid} intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.callCard}>
+        <TouchableOpacity
+          style={styles.callContent}
+          onPress={() => handleCallDetail(call)}
+        >
+          <View style={[styles.avatar, { backgroundColor: '#3B82F6' }]}>
+            <ThemedText style={styles.avatarText}>{initial}</ThemedText>
+          </View>
+          <View style={styles.callInfo}>
+            <ThemedText type="defaultSemiBold">{displayName}</ThemedText>
+            <View style={styles.callMeta}>
+              <View style={[styles.callBadge, { backgroundColor: getCallColor(call) + '20' }]}>
+                <IconSymbol name={getCallIcon(call)} size={12} color={getCallColor(call)} />
+                <ThemedText style={[styles.callTime, { color: getCallColor(call) }]}>{time}</ThemedText>
+              </View>
             </View>
           </View>
-        </View>
-        <TouchableOpacity
-          style={[styles.callButton, { backgroundColor: '#10B981' }]}
-          onPress={() => handleMakeCall(item)}
-        >
-          <IconSymbol name="phone.fill" size={20} color="#fff" />
+          <TouchableOpacity
+            style={[styles.callButton, { backgroundColor: '#10B981' }]}
+            onPress={() => handleMakeCall(call)}
+          >
+            <IconSymbol name="phone.fill" size={20} color="#fff" />
+          </TouchableOpacity>
         </TouchableOpacity>
-      </TouchableOpacity>
-    </BlurView>
-  );
+      </BlurView>
+    );
+  };
+
+  // Helper to format time difference
+  const timeSince = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    return days === 1 ? 'Yesterday' : `${days}d`;
+  };
+
+  // Split today vs earlier
+  const today = callLogs.filter(call => {
+    if (!call.callStartTime) return false;
+    const todayDate = new Date();
+    return call.callStartTime.toDateString() === todayDate.toDateString();
+  });
+
+  const earlier = callLogs.filter(call => {
+    if (!call.callStartTime) return false;
+    const todayDate = new Date();
+    return call.callStartTime.toDateString() !== todayDate.toDateString();
+  });
 
   return (
     <ThemedView style={styles.container}>
@@ -86,25 +133,17 @@ export default function RecentsScreen() {
           <ThemedText type="title">Recents</ThemedText>
           <ThemedText style={styles.subtitle}>Your call history</ThemedText>
         </View>
-        <TouchableOpacity style={styles.refreshButton}>
+        <TouchableOpacity style={styles.refreshButton} onPress={fetchCallLogs}>
           <IconSymbol name="arrow.clockwise" size={24} color={isDark ? '#F1F5F9' : '#111827'} />
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>TODAY</ThemedText>
-        {recentCalls.map((item) => (
-          <View key={item.id} style={{ marginBottom: 12 }}>
-            {renderCallItem({ item })}
-          </View>
-        ))}
+        {today.length > 0 && <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>TODAY</ThemedText>}
+        {today.map(call => <View key={call.call?.callSid} style={{ marginBottom: 12 }}>{renderCallItem(call)}</View>)}
 
-        <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, { marginTop: 24 }]}>EARLIER</ThemedText>
-        {earlierCalls.map((item) => (
-          <View key={item.id} style={{ marginBottom: 12 }}>
-            {renderCallItem({ item })}
-          </View>
-        ))}
+        {earlier.length > 0 && <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, { marginTop: 24 }]}>EARLIER</ThemedText>}
+        {earlier.map(call => <View key={call.call?.callSid} style={{ marginBottom: 12 }}>{renderCallItem(call)}</View>)}
       </ScrollView>
     </ThemedView>
   );

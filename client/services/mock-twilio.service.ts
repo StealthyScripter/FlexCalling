@@ -2,9 +2,7 @@ import { EventEmitter } from 'eventemitter3';
 import {
   Call,
   CallInvite,
-  CallState,
   ConnectOptions,
-  TwilioEvent,
   CallConnectedEvent,
   CallDisconnectedEvent,
   CallInviteEvent,
@@ -22,20 +20,12 @@ class MockTwilioVoiceSDK extends EventEmitter {
     { uuid: '1', name: 'Speaker', type: 'speaker' },
     { uuid: '2', name: 'Earpiece', type: 'earpiece' },
   ];
-  private selectedAudioDevice: AudioDevice = this.audioDevices[1]; // Earpiece default
-
-  constructor() {
-    super();
-  }
+  private selectedAudioDevice: AudioDevice = this.audioDevices[1];
 
   // ============================================
   // DEVICE REGISTRATION
   // ============================================
 
-  /**
-   * Register device with Twilio
-   * In real SDK, this registers for VoIP push notifications
-   */
   async register(accessToken: string): Promise<void> {
     return new Promise((resolve, reject) => {
       // Simulate network delay

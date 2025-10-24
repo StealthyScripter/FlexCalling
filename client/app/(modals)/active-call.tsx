@@ -7,48 +7,61 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useEffect } from 'react';
 import { useCall } from '@/contexts/call-context';
+import { APIService } from '@/services/api.service';
+import { v4 as uuidv4 } from 'uuid';
+import {  CallUIData } from '@/types/twilio';
 
 export default function ActiveCallScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
-  // Get call data from context
   const { callData, endCall, toggleMute, toggleSpeaker, audioDevice } = useCall();
 
   const call = callData.call;
   const duration = callData.callDuration;
   const cost = callData.estimatedCost;
 
-  // Get control states
   const isMuted = call?.isMuted || false;
   const isSpeaker = audioDevice?.type === 'speaker';
 
-  // Format duration as MM:SS
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
   };
 
+  // Save call log on call end
+  // Save call log on call end
+    const saveCallLog = () => {
+      if (!call) return;
+      const uiData: CallUIData = {
+        call,
+        incomingCallInvite: null,
+        callStartTime: callData.callStartTime ?? new Date(Date.now() - duration * 1000),
+        callDuration: duration,
+        ratePerMinute: callData.ratePerMinute ?? 0,
+        estimatedCost: cost ?? 0,
+      };
+      APIService.saveCallLog(uiData);
+    };
   const handleEndCall = () => {
     Alert.alert(
       'End Call',
       'Are you sure you want to end this call?',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'End Call',
           style: 'destructive',
           onPress: async () => {
             try {
               await endCall();
+              saveCallLog();
               router.back();
             } catch (error) {
               console.error('Failed to end call:', error);
+              saveCallLog();
               router.back();
             }
           }
@@ -58,34 +71,21 @@ export default function ActiveCallScreen() {
   };
 
   const handleToggleMute = async () => {
-    try {
-      await toggleMute();
-    } catch (error) {
-      console.error('Failed to toggle mute:', error);
-    }
+    try { await toggleMute(); }
+    catch (error) { console.error('Failed to toggle mute:', error); }
   };
 
   const handleToggleSpeaker = async () => {
-    try {
-      await toggleSpeaker();
-    } catch (error) {
-      console.error('Failed to toggle speaker:', error);
-    }
+    try { await toggleSpeaker(); }
+    catch (error) { console.error('Failed to toggle speaker:', error); }
   };
 
-  // Redirect if no active call
   useEffect(() => {
-    if (!call) {
-      router.back();
-    }
+    if (!call) router.back();
   }, [call]);
 
-  // Don't render if no call
-  if (!call) {
-    return null;
-  }
+  if (!call) return null;
 
-  // Get display name (use phone number as fallback)
   const displayName = call.to;
   const displayInitial = displayName[0] || '?';
 
@@ -98,27 +98,18 @@ export default function ActiveCallScreen() {
           <View style={[styles.callerAvatar, { backgroundColor: '#8B5CF6' }]}>
             <ThemedText style={styles.callerInitial}>{displayInitial}</ThemedText>
           </View>
-          <ThemedText type="title" style={styles.callerName}>
-            {displayName}
-          </ThemedText>
+          <ThemedText type="title" style={styles.callerName}>{displayName}</ThemedText>
 
-          {/* Duration Badge with Pulse Animation */}
           <View style={styles.durationBadge}>
             <View style={styles.pulseDot} />
-            <ThemedText style={styles.callDuration}>
-              {formatDuration(duration)}
-            </ThemedText>
+            <ThemedText style={styles.callDuration}>{formatDuration(duration)}</ThemedText>
           </View>
 
-          {/* Cost Badge */}
           <View style={styles.rateBadge}>
             <IconSymbol name="dollarsign.circle.fill" size={16} color="#10B981" />
-            <ThemedText style={styles.callRate}>
-              ${cost.toFixed(2)} • ${callData.ratePerMinute}/min
-            </ThemedText>
+            <ThemedText style={styles.callRate}>${cost.toFixed(2)} • ${callData.ratePerMinute}/min</ThemedText>
           </View>
 
-          {/* Call State Indicator */}
           <View style={styles.stateBadge}>
             <ThemedText style={styles.stateText}>
               {call.state === 'connecting' ? 'Connecting...' :
@@ -130,30 +121,17 @@ export default function ActiveCallScreen() {
 
       <View style={styles.controls}>
         <View style={styles.controlRow}>
-          {/* Mute Button */}
-          <TouchableOpacity
-            style={[styles.controlButton, isMuted && styles.controlButtonActive]}
-            onPress={handleToggleMute}
-          >
-            <IconSymbol
-              name={isMuted ? "mic.slash.fill" : "mic.fill"}
-              size={24}
-              color="#fff"
-            />
+          <TouchableOpacity style={[styles.controlButton, isMuted && styles.controlButtonActive]} onPress={handleToggleMute}>
+            <IconSymbol name={isMuted ? "mic.slash.fill" : "mic.fill"} size={24} color="#fff" />
             <ThemedText style={styles.controlLabel}>Mute</ThemedText>
           </TouchableOpacity>
 
-          {/* Speaker Button */}
-          <TouchableOpacity
-            style={[styles.controlButton, isSpeaker && styles.controlButtonActive]}
-            onPress={handleToggleSpeaker}
-          >
+          <TouchableOpacity style={[styles.controlButton, isSpeaker && styles.controlButtonActive]} onPress={handleToggleSpeaker}>
             <IconSymbol name="speaker.wave.3.fill" size={24} color="#fff" />
             <ThemedText style={styles.controlLabel}>Speaker</ThemedText>
           </TouchableOpacity>
         </View>
 
-        {/* End Call Button */}
         <TouchableOpacity style={styles.endCallButton} onPress={handleEndCall}>
           <IconSymbol name="phone.down.fill" size={32} color="#fff" />
         </TouchableOpacity>
