@@ -7,6 +7,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/contexts/theme-context';
 import { BlurView } from 'expo-blur';
 import { twilioVoice } from '@/services/mock-twilio.service';
+import { mockDatabase } from '@/services/api.service';
+
+const user = mockDatabase.getCurrentUser();
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -64,15 +67,22 @@ export default function AccountScreen() {
 
         <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.profileCard}>
           <View style={[styles.profileAvatar, { backgroundColor: '#8B5CF6' }]}>
-            <ThemedText style={styles.profileInitial}>JD</ThemedText>
+            <ThemedText style={styles.profileInitial}>
+              {user?.name.split(' ').map(n => n[0]).join('') || 'NA'}
+              </ThemedText>
           </View>
-          <ThemedText type="title" style={styles.profileName}>John Doe</ThemedText>
-          <ThemedText style={styles.profilePhone}>+1 (555) 123-4567</ThemedText>
+          <ThemedText type="title" style={styles.profileName}>{user?.name || 'No Name'}</ThemedText>
+          <ThemedText style={styles.profilePhone}>{user?.phone || 'No Phone'}</ThemedText>
+          <ThemedText>
+            {user?.email || 'No Email'}
+          </ThemedText>
         </BlurView>
 
         <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.balanceCard}>
           <ThemedText style={styles.balanceLabel}>Account Balance</ThemedText>
-          <ThemedText type="title" style={styles.balanceAmount}>$25.50</ThemedText>
+          <ThemedText type="title" style={styles.balanceAmount}>
+            ${user?.balance.toFixed(2) || '0.00'}
+          </ThemedText>
           <TouchableOpacity style={styles.topUpButton}>
             <ThemedText style={styles.topUpText}>Top Up</ThemedText>
           </TouchableOpacity>

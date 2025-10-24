@@ -68,7 +68,6 @@ let callLogs: CallUIData[] = [
   },
 ];
 
-// ADDED: Interface for enriched call data
 export interface EnrichedCallLog extends CallUIData {
   contactName?: string;
   contactId?: string;
@@ -151,4 +150,50 @@ export const APIService = {
       })
       .map(log => APIService.enrichCallLog(log));
   },
+
 };
+
+export interface User {
+  id: string;
+  name: string;
+  phone: string;
+  balance: number;
+  email: string;
+}
+
+const users: User[] = [
+  {
+    id: '1',
+    name: 'James Doe',
+    phone: '+1 (919) 123-4567',
+    balance: 22.5,
+    email: 'john.doe@example.com',
+  },
+  {
+    id: '2',
+    name: 'Jane Smith',
+    phone: '+254 712 345 678',
+    balance: 100.0,
+    email: 'jane.smith@example.com',
+  },
+];
+
+let currentUserId: string | null = '1';
+
+export const mockDatabase = {
+  getCurrentUser: (): User | null => {
+    return users.find(u => u.id === currentUserId) || null;
+  },
+  setCurrentUser: (id: string) => {
+    if (users.some(u => u.id === id)) {
+      currentUserId = id;
+    } else {
+      console.warn('User ID not found');
+    }
+  },
+  updateUserBalance: (id: string, newBalance: number) => {
+    const user = users.find(u => u.id === id);
+    if (user) user.balance = newBalance;
+  },
+};
+
