@@ -23,7 +23,10 @@ export default function ContactsScreen() {
   }, []);
 
   const handleContactDetail = (contact: Contact) => {
-    router.push('/(modals)/contact-detail'); // Optionally pass contact.id as param
+    router.push({
+      pathname: '/(modals)/contact-detail',
+      params: { contactId: contact.id }
+    });
   };
 
   const handleAddContact = () => {

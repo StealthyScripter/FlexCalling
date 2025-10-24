@@ -5,9 +5,9 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
-import { useEffect, useState } from 'react';
-import { APIService } from '@/services/api.service';
-import { CallUIData } from '@/types/twilio';
+import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { APIService, EnrichedCallLog } from '@/services/api.service';
 import { useCall } from '@/contexts/call-context';
 
 export default function RecentsScreen() {
@@ -16,7 +16,7 @@ export default function RecentsScreen() {
   const isDark = colorScheme === 'dark';
 
   const { makeCall, isDeviceReady } = useCall();
-  const [callLogs, setCallLogs] = useState<CallUIData[]>([]);
+  const [callLogs, setCallLogs] = useState<EnrichedCallLog[]>([]);
 
   // Fetch call logs from mock DB
   const fetchCallLogs = () => {
@@ -27,7 +27,14 @@ export default function RecentsScreen() {
     fetchCallLogs();
   }, []);
 
-  const getCallIcon = (call: CallUIData) => {
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchCallLogs();
+    }, [])
+  );
+
+  const getCallIcon = (call: EnrichedCallLog) => {
     const type = call.call?.direction === 'outgoing' ? 'outgoing' :
                  call.call?.direction === 'incoming' ? 'incoming' : 'missed';
     switch(type) {
@@ -38,7 +45,7 @@ export default function RecentsScreen() {
     }
   };
 
-  const getCallColor = (call: CallUIData) => {
+  const getCallColor = (call: EnrichedCallLog) => {
     const type = call.call?.direction === 'outgoing' ? 'outgoing' :
                  call.call?.direction === 'incoming' ? 'incoming' : 'missed';
     switch(type) {
@@ -49,11 +56,16 @@ export default function RecentsScreen() {
     }
   };
 
-  const handleCallDetail = (call: CallUIData) => {
-    router.push('/(modals)/call-detail'); // You can pass call ID via params if needed
+  const handleCallDetail = (call: EnrichedCallLog) => {
+    if (call.call?.callSid) {
+      router.push({
+        pathname: '/(modals)/call-detail',
+        params: { callSid: call.call.callSid }
+      });
+    }
   };
 
-  const handleMakeCall = async (call: CallUIData) => {
+  const handleMakeCall = async (call: EnrichedCallLog) => {
     if (!isDeviceReady) return;
     if (!call.call?.to) return;
     try {
@@ -64,10 +76,14 @@ export default function RecentsScreen() {
     }
   };
 
-  const renderCallItem = (call: CallUIData) => {
-    const displayName = call.call?.to || 'Unknown';
+  const renderCallItem = (call: EnrichedCallLog) => {
+    const displayName = call.contactName || call.call?.to || 'Unknown';
+    const phoneNumber = call.call?.direction === 'outgoing' ? call.call.to : call.call?.from;
     const initial = displayName[0]?.toUpperCase() || '?';
     const time = call.callStartTime ? timeSince(call.callStartTime) : 'Unknown';
+
+    // UPDATED: Use contact avatar color if available
+    const avatarColor = call.contactAvatar || '#3B82F6';
 
     return (
       <BlurView key={call.call?.callSid} intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.callCard}>
@@ -75,11 +91,14 @@ export default function RecentsScreen() {
           style={styles.callContent}
           onPress={() => handleCallDetail(call)}
         >
-          <View style={[styles.avatar, { backgroundColor: '#3B82F6' }]}>
+          <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
             <ThemedText style={styles.avatarText}>{initial}</ThemedText>
           </View>
           <View style={styles.callInfo}>
             <ThemedText type="defaultSemiBold">{displayName}</ThemedText>
+            {call.contactName && (
+              <ThemedText style={styles.phoneSubtext}>{phoneNumber}</ThemedText>
+            )}
             <View style={styles.callMeta}>
               <View style={[styles.callBadge, { backgroundColor: getCallColor(call) + '20' }]}>
                 <IconSymbol name={getCallIcon(call)} size={12} color={getCallColor(call)} />
@@ -98,7 +117,6 @@ export default function RecentsScreen() {
     );
   };
 
-  // Helper to format time difference
   const timeSince = (date: Date) => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
     if (seconds < 60) return `${seconds}s`;
@@ -110,7 +128,6 @@ export default function RecentsScreen() {
     return days === 1 ? 'Yesterday' : `${days}d`;
   };
 
-  // Split today vs earlier
   const today = callLogs.filter(call => {
     if (!call.callStartTime) return false;
     const todayDate = new Date();
@@ -144,6 +161,12 @@ export default function RecentsScreen() {
 
         {earlier.length > 0 && <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, { marginTop: 24 }]}>EARLIER</ThemedText>}
         {earlier.map(call => <View key={call.call?.callSid} style={{ marginBottom: 12 }}>{renderCallItem(call)}</View>)}
+
+        {callLogs.length === 0 && (
+          <View style={{ alignItems: 'center', marginTop: 100 }}>
+            <ThemedText style={{ opacity: 0.6 }}>No call history yet</ThemedText>
+          </View>
+        )}
       </ScrollView>
     </ThemedView>
   );
@@ -163,6 +186,7 @@ const styles = StyleSheet.create({
   avatar: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: '#fff', fontSize: 20, fontWeight: '600' },
   callInfo: { flex: 1 },
+  phoneSubtext: { fontSize: 12, opacity: 0.5, marginTop: 2 }, // ADDED
   callMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   callBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   callTime: { fontSize: 12, fontWeight: '600' },

@@ -5,11 +5,10 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useCall } from '@/contexts/call-context';
 import { APIService } from '@/services/api.service';
-import { v4 as uuidv4 } from 'uuid';
-import {  CallUIData } from '@/types/twilio';
+import { CallUIData } from '@/types/twilio';
 
 export default function ActiveCallScreen() {
   const router = useRouter();
@@ -17,6 +16,9 @@ export default function ActiveCallScreen() {
   const isDark = colorScheme === 'dark';
 
   const { callData, endCall, toggleMute, toggleSpeaker, audioDevice } = useCall();
+
+  // ADDED: Track if call log has been saved to prevent duplicates
+  const callLogSavedRef = useRef(false);
 
   const call = callData.call;
   const duration = callData.callDuration;
@@ -31,20 +33,28 @@ export default function ActiveCallScreen() {
     return `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
   };
 
-  // Save call log on call end
-  // Save call log on call end
-    const saveCallLog = () => {
-      if (!call) return;
-      const uiData: CallUIData = {
-        call,
-        incomingCallInvite: null,
-        callStartTime: callData.callStartTime ?? new Date(Date.now() - duration * 1000),
-        callDuration: duration,
-        ratePerMinute: callData.ratePerMinute ?? 0,
-        estimatedCost: cost ?? 0,
-      };
-      APIService.saveCallLog(uiData);
+  // Save call log only once
+  const saveCallLog = useCallback(() => {
+    if (!call || callLogSavedRef.current) {
+      console.log('Call log already saved or no call data');
+      return;
+    }
+
+    const uiData: CallUIData = {
+      call,
+      incomingCallInvite: null,
+      callStartTime: callData.callStartTime ?? new Date(Date.now() - duration * 1000),
+      callDuration: duration,
+      ratePerMinute: callData.ratePerMinute ?? 0,
+      estimatedCost: cost ?? 0,
     };
+
+    APIService.saveCallLog(uiData);
+    callLogSavedRef.current = true; // Mark as saved
+    console.log('Call log saved (once):', uiData);
+  }, [call, callData.callStartTime, duration, callData.ratePerMinute, cost]);
+
+
   const handleEndCall = () => {
     Alert.alert(
       'End Call',
@@ -56,13 +66,30 @@ export default function ActiveCallScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await endCall();
+              // Save call log before ending
               saveCallLog();
-              router.back();
+
+              // End the call
+              await endCall();
+
+              // Navigate back
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)');
+              }
             } catch (error) {
               console.error('Failed to end call:', error);
+
+              // Still save the log even if end call fails
               saveCallLog();
-              router.back();
+
+              // Navigate back
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)');
+              }
             }
           }
         }
@@ -71,18 +98,48 @@ export default function ActiveCallScreen() {
   };
 
   const handleToggleMute = async () => {
-    try { await toggleMute(); }
-    catch (error) { console.error('Failed to toggle mute:', error); }
+    try {
+      await toggleMute();
+    } catch (error) {
+      console.error('Failed to toggle mute:', error);
+    }
   };
 
   const handleToggleSpeaker = async () => {
-    try { await toggleSpeaker(); }
-    catch (error) { console.error('Failed to toggle speaker:', error); }
+    try {
+      await toggleSpeaker();
+    } catch (error) {
+      console.error('Failed to toggle speaker:', error);
+    }
   };
 
   useEffect(() => {
-    if (!call) router.back();
-  }, [call]);
+    // Reset the saved flag when a new call starts
+    if (call) {
+      callLogSavedRef.current = false;
+    }
+
+    // If call ends unexpectedly, save and navigate
+    if (!call && callData.callStartTime) {
+      saveCallLog();
+
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
+    }
+  }, [call, callData.callStartTime, router, saveCallLog]);
+
+  // ADDED: Cleanup on unmount - save call log if not already saved
+  useEffect(() => {
+    return () => {
+      if (call && !callLogSavedRef.current) {
+        console.log('Component unmounting, saving call log');
+        saveCallLog();
+      }
+    };
+  }, [call, saveCallLog]);
 
   if (!call) return null;
 

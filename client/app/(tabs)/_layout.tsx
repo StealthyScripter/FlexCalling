@@ -17,7 +17,7 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
-        name="index"  // Changed from "recents"
+        name="index" 
         options={{
           title: 'Recents',
           tabBarIcon: ({ color }) => (

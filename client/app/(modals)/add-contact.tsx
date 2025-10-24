@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useState } from 'react';
+import { safeNavigateBack } from '@/utils/navigation';
 
 export default function AddContactScreen() {
   const router = useRouter();
@@ -18,6 +19,10 @@ export default function AddContactScreen() {
   const [email, setEmail] = useState('');
   const [location, setLocation] = useState('');
 
+  const handleCancel = () => {
+    safeNavigateBack(router, '/(tabs)/contacts');
+  };
+
   const handleSave = () => {
     if (!firstName || !phoneNumber) {
       Alert.alert('Error', 'Please enter at least a name and phone number');
@@ -28,15 +33,11 @@ export default function AddContactScreen() {
     Alert.alert('Success', 'Contact saved successfully', [
       {
         text: 'OK',
-        onPress: () => router.back()
+        onPress: () => safeNavigateBack(router, '/(tabs)/contacts')
       }
     ]);
   };
-
-  const handleCancel = () => {
-    router.back();
-  };
-
+  
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.decorativeBlur, { backgroundColor: isDark ? 'rgba(236, 72, 153, 0.15)' : 'rgba(236, 72, 153, 0.1)' }]} />

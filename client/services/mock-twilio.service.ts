@@ -27,8 +27,8 @@ class MockTwilioVoiceSDK extends EventEmitter {
   // ============================================
 
   async register(accessToken: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // Simulate network delay
+  return new Promise((resolve, reject) => {
+    // Simulate network delay
       setTimeout(() => {
         if (!accessToken || accessToken.length < 10) {
           const error: TwilioError = {
@@ -41,6 +41,7 @@ class MockTwilioVoiceSDK extends EventEmitter {
         }
 
         this.isRegistered = true;
+        console.log('Mock Twilio: Device registered, emitting deviceReady event');
         this.emit('deviceReady', { device: 'mock-device' });
         resolve();
       }, 500);

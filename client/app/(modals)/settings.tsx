@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useState } from 'react';
+import { safeNavigateBack } from '@/utils/navigation';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function SettingsScreen() {
       <View style={[styles.decorativeBlur, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]} />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => safeNavigateBack(router, '/(tabs)/account')} style={styles.backButton}>
           <IconSymbol name="chevron.left" size={24} color={isDark ? '#F1F5F9' : '#111827'} />
         </TouchableOpacity>
         <ThemedText type="title">Settings</ThemedText>

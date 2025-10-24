@@ -8,15 +8,6 @@ export interface Contact {
   avatarColor: string;
 }
 
-export interface CallLog {
-  id: string;
-  to: string;
-  type: 'incoming' | 'outgoing' | 'missed';
-  duration: number; // in seconds
-  timestamp: number;
-  cost: number;
-}
-
 // Mock contacts database
 let contacts: Contact[] = [
   { id: '1', name: 'Alice Johnson', phone: '+254712345678', favorite: true, avatarColor: '#EC4899' },
@@ -25,10 +16,75 @@ let contacts: Contact[] = [
   { id: '4', name: 'David Brown', phone: '+254745678901', favorite: false, avatarColor: '#8B5CF6' },
 ];
 
-let callLogs: CallUIData[] = [];
+// FIXED: Add initial mock call logs with proper phone numbers matching contacts
+let callLogs: CallUIData[] = [
+  {
+    call: {
+      callSid: 'CA001',
+      from: '+1234567890',
+      to: '+254712345678', // Alice Johnson
+      state: 'connected',
+      direction: 'outgoing',
+      isMuted: false,
+      isOnHold: false,
+    },
+    incomingCallInvite: null,
+    callStartTime: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    callDuration: 125,
+    ratePerMinute: 0.15,
+    estimatedCost: 0.31,
+  },
+  {
+    call: {
+      callSid: 'CA002',
+      from: '+254723456789', // Bob Williams
+      to: '+1234567890',
+      state: 'connected',
+      direction: 'incoming',
+      isMuted: false,
+      isOnHold: false,
+    },
+    incomingCallInvite: null,
+    callStartTime: new Date(Date.now() - 24 * 60 * 60 * 1000), // Yesterday
+    callDuration: 320,
+    ratePerMinute: 0.15,
+    estimatedCost: 0.80,
+  },
+  {
+    call: {
+      callSid: 'CA003',
+      from: '+1234567890',
+      to: '+254734567890', // Carol Davis
+      state: 'connected',
+      direction: 'outgoing',
+      isMuted: false,
+      isOnHold: false,
+    },
+    incomingCallInvite: null,
+    callStartTime: new Date(Date.now() - 48 * 60 * 60 * 1000), // 2 days ago
+    callDuration: 540,
+    ratePerMinute: 0.15,
+    estimatedCost: 1.35,
+  },
+];
+
+// ADDED: Interface for enriched call data
+export interface EnrichedCallLog extends CallUIData {
+  contactName?: string;
+  contactId?: string;
+  contactAvatar?: string;
+}
 
 export const APIService = {
   getContacts: (): Contact[] => [...contacts],
+
+  getContactById: (id: string): Contact | undefined => {
+    return contacts.find(c => c.id === id);
+  },
+
+  getContactByPhone: (phone: string): Contact | undefined => {
+    return contacts.find(c => c.phone === phone);
+  },
 
   addContact: (contact: Contact) => {
     contacts.push(contact);
@@ -38,20 +94,61 @@ export const APIService = {
     contacts = [];
   },
 
-  getCallLogs: (): CallUIData[] => {
-    // Sort by most recent first
-    return [...callLogs].sort((a, b) => {
-      const aTime = a.callStartTime?.getTime() ?? 0;
-      const bTime = b.callStartTime?.getTime() ?? 0;
-      return bTime - aTime;
-    });
+  // ADDED: Helper to enrich a single call log with contact info
+  enrichCallLog: (callLog: CallUIData): EnrichedCallLog => {
+    if (!callLog.call) return callLog;
+
+    // Determine the phone number to look up based on call direction
+    const phoneToLookup = callLog.call.direction === 'outgoing'
+      ? callLog.call.to
+      : callLog.call.from;
+
+    const contact = APIService.getContactByPhone(phoneToLookup);
+
+    return {
+      ...callLog,
+      contactName: contact?.name,
+      contactId: contact?.id,
+      contactAvatar: contact?.avatarColor,
+    };
+  },
+
+  // UPDATED: Return enriched call logs
+  getCallLogs: (): EnrichedCallLog[] => {
+    // Sort by most recent first and enrich with contact data
+    return [...callLogs]
+      .sort((a, b) => {
+        const aTime = a.callStartTime?.getTime() ?? 0;
+        const bTime = b.callStartTime?.getTime() ?? 0;
+        return bTime - aTime;
+      })
+      .map(log => APIService.enrichCallLog(log));
   },
 
   saveCallLog: (call: CallUIData) => {
+    if (!call.call || !call.callStartTime) {
+      console.warn('Invalid call data, skipping save');
+      return;
+    }
     callLogs.push(call);
+    console.log('Call log saved:', call);
   },
 
   clearCallLogs: () => {
     callLogs = [];
+  },
+
+  // UPDATED: Get enriched call history for specific contact
+  getCallLogsForContact: (contactPhone: string): EnrichedCallLog[] => {
+    return callLogs
+      .filter(log =>
+        log.call?.to === contactPhone || log.call?.from === contactPhone
+      )
+      .sort((a, b) => {
+        const aTime = a.callStartTime?.getTime() ?? 0;
+        const bTime = b.callStartTime?.getTime() ?? 0;
+        return bTime - aTime;
+      })
+      .map(log => APIService.enrichCallLog(log));
   },
 };

@@ -1,4 +1,4 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -13,52 +13,106 @@ export default function IncomingCallScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
-  // Get call data from context
   const { callData, acceptCall, rejectCall } = useCall();
   const incomingCall = callData.incomingCallInvite;
 
   const handleAccept = async () => {
     try {
-      // Accept the call
-      await acceptCall();
+      console.log('Accepting call...');
 
-      // Navigate to active call screen
+      if (!incomingCall) {
+        Alert.alert('Error', 'No incoming call to accept');
+        router.back();
+        return;
+      }
+
+      await acceptCall();
       router.replace('/(modals)/active-call');
     } catch (error) {
       console.error('Failed to accept call:', error);
-      router.back();
+      Alert.alert('Error', 'Failed to accept call');
+
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
     }
   };
 
   const handleDecline = async () => {
     try {
-      // Reject the call
+      console.log('Declining call...');
+
+      if (!incomingCall) {
+        console.log('No incoming call to decline');
+        router.back();
+        return;
+      }
+
       await rejectCall();
 
-      // Go back
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (error) {
       console.error('Failed to reject call:', error);
-      router.back();
+
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
     }
   };
 
-  // Redirect if no incoming call
   useEffect(() => {
-    if (!incomingCall) {
-      router.back();
-    }
-  }, [incomingCall]);
+    console.log('Incoming call screen mounted. Invite:', incomingCall);
 
-  // Don't render if no incoming call
+    if (!incomingCall) {
+      console.log('No incoming call invite found');
+
+      const timeout = setTimeout(() => {
+        if (!incomingCall) {
+          Alert.alert('No Incoming Call', 'There is no incoming call to display', [
+            {
+              text: 'OK',
+              onPress: () => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/(tabs)');
+                }
+              }
+            }
+          ]);
+        }
+      }, 500);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [incomingCall, router]);
+
   if (!incomingCall) {
-    return null;
+    return (
+      <ThemedView style={styles.container}>
+        <View style={[styles.decorativeBlur, styles.blur1, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)' }]} />
+
+        <View style={styles.callerInfo}>
+          <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.callerCard}>
+            <ThemedText style={{ opacity: 0.6 }}>Loading incoming call...</ThemedText>
+          </BlurView>
+        </View>
+      </ThemedView>
+    );
   }
 
-  // Get caller info
   const callerNumber = incomingCall.from;
   const callerInitial = callerNumber[0] || '?';
   const location = incomingCall.customParameters?.location || 'Unknown Location';
+  const callId = incomingCall.callSid;
 
   return (
     <ThemedView style={styles.container}>
@@ -67,48 +121,38 @@ export default function IncomingCallScreen() {
 
       <View style={styles.callerInfo}>
         <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.callerCard}>
-          {/* Caller Avatar */}
           <View style={[styles.callerAvatar, { backgroundColor: '#3B82F6' }]}>
             <ThemedText style={styles.callerInitial}>{callerInitial}</ThemedText>
           </View>
 
-          {/* Caller Number */}
-          <ThemedText type="title" style={styles.callerName}>
-            {callerNumber}
-          </ThemedText>
+          <ThemedText type="title" style={styles.callerName}>{callerNumber}</ThemedText>
 
-          {/* Location Badge */}
           <View style={styles.locationBadge}>
             <IconSymbol name="mappin.circle.fill" size={16} color="#10B981" />
-            <ThemedText style={styles.callerLocation}>
-              {location}
-            </ThemedText>
+            <ThemedText style={styles.callerLocation}>{location}</ThemedText>
           </View>
 
-          {/* Incoming Call Label */}
           <View style={styles.callTypeBadge}>
             <IconSymbol name="phone.arrow.down.left.fill" size={16} color="#3B82F6" />
             <ThemedText style={styles.callType}>Incoming Call</ThemedText>
           </View>
 
-          {/* Call ID for reference */}
-          <ThemedText style={styles.callId}>
-            Call ID: {incomingCall.callSid.substring(0, 8)}...
-          </ThemedText>
+          <ThemedText style={styles.callId}>Call ID: {callId.substring(0, 8)}...</ThemedText>
         </BlurView>
       </View>
 
-      {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        {/* Decline Button */}
-        <TouchableOpacity style={styles.declineButton} onPress={handleDecline}>
-          <IconSymbol name="phone.down.fill" size={32} color="#fff" />
+        <TouchableOpacity style={styles.declineButtonContainer} onPress={handleDecline}>
+          <View style={[styles.buttonCircle, styles.declineCircle]}>
+            <IconSymbol name="phone.down.fill" size={32} color="#fff" />
+          </View>
           <ThemedText style={styles.buttonLabel}>Decline</ThemedText>
         </TouchableOpacity>
 
-        {/* Accept Button */}
-        <TouchableOpacity style={styles.acceptButton} onPress={handleAccept}>
-          <IconSymbol name="phone.fill" size={32} color="#fff" />
+        <TouchableOpacity style={styles.acceptButtonContainer} onPress={handleAccept}>
+          <View style={[styles.buttonCircle, styles.acceptCircle]}>
+            <IconSymbol name="phone.fill" size={32} color="#fff" />
+          </View>
           <ThemedText style={styles.buttonLabel}>Accept</ThemedText>
         </TouchableOpacity>
       </View>
@@ -132,7 +176,10 @@ const styles = StyleSheet.create({
   callType: { fontSize: 14, color: '#3B82F6', fontWeight: '600' },
   callId: { fontSize: 10, opacity: 0.5, marginTop: 8 },
   actionButtons: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 40 },
-  declineButton: { alignItems: 'center', gap: 8 },
-  acceptButton: { alignItems: 'center', gap: 8 },
-  buttonLabel: { color: '#fff', fontSize: 14, fontWeight: '600', marginTop: 4 },
+  declineButtonContainer: { alignItems: 'center', gap: 12 },
+  acceptButtonContainer: { alignItems: 'center', gap: 12 },
+  buttonCircle: { width: 75, height: 75, borderRadius: 38, justifyContent: 'center', alignItems: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
+  declineCircle: { backgroundColor: '#EF4444', shadowColor: '#EF4444' },
+  acceptCircle: { backgroundColor: '#10B981', shadowColor: '#10B981' },
+  buttonLabel: { fontSize: 14, fontWeight: '600' },
 });

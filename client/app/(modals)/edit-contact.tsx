@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useState } from 'react';
+import { safeNavigateBack } from '@/utils/navigation';
 
 export default function EditContactScreen() {
   const router = useRouter();
@@ -50,7 +51,7 @@ export default function EditContactScreen() {
       <View style={[styles.decorativeBlur, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]} />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => safeNavigateBack(router, '(tabs)/contacts')} style={styles.backButton}>
           <IconSymbol name="chevron.left" size={24} color={isDark ? '#F1F5F9' : '#111827'} />
         </TouchableOpacity>
         <ThemedText type="title">Edit Contact</ThemedText>

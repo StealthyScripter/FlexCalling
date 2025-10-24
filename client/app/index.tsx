@@ -16,14 +16,16 @@ export default function SplashScreen() {
 
   useEffect(() => {
     const initialize = async () => {
-      // Check authentication
-      const isAuthenticated = false; // Replace with actual auth check
+      // IMPORTANT: Set to true for testing
+      const isAuthenticated = true; // Changed from false
 
       if (isAuthenticated) {
         // Register device with Twilio
         try {
-          const token = 'YOUR_ACCESS_TOKEN'; // Get from backend
+          const token = 'mock-access-token-for-testing'; // Mock token
+          console.log('Registering device with token:', token);
           await registerDevice(token);
+          console.log('Device registered successfully');
         } catch (error) {
           console.error('Failed to register device:', error);
         }

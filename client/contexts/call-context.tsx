@@ -51,7 +51,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Device events
     const handleDeviceReady = () => {
-      console.log('Device ready');
+      console.log('✅ Device ready event received');
       setIsDeviceReady(true);
 
       // Get audio devices
@@ -61,12 +61,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
     };
 
     const handleDeviceNotReady = () => {
-      console.log('Device not ready');
+      console.log('❌ Device not ready event received');
       setIsDeviceReady(false);
     };
 
     const handleDeviceError = (event: any) => {
-      console.error('Device error:', event.error);
+      console.error('❌ Device error event received:', event.error);
       setIsDeviceReady(false);
     };
 

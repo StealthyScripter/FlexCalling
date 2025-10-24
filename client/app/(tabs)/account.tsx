@@ -17,7 +17,6 @@ export default function AccountScreen() {
   const menuItems = [
     { icon: 'person.circle.fill' as const, label: 'Edit Profile', chevron: true, route: null },
     { icon: 'creditcard' as const, label: 'Payment Methods', chevron: true, route: null },
-    { icon: 'clock.fill' as const, label: 'Call History', chevron: true, route: null },
     { icon: 'gearshape.fill' as const, label: 'Settings', chevron: true, route: '/(modals)/settings' },
     { icon: 'questionmark.circle.fill' as const, label: 'Help & Support', chevron: true, route: null },
   ];
@@ -47,7 +46,7 @@ export default function AccountScreen() {
         {/* DEV MODE - Test Navigation Banner */}
         <TouchableOpacity
           style={styles.devBanner}
-          onPress={() => router.push('/(modals)/test-navigation')}
+          onPress={handleTestIncomingCall}
         >
           <View style={styles.devBannerContent}>
             <IconSymbol name="wrench.and.screwdriver.fill" size={24} color="#8B5CF6" />
@@ -56,14 +55,11 @@ export default function AccountScreen() {
                 Developer Mode
               </ThemedText>
               <ThemedText style={styles.devBannerSubtext}>
-                Test all screens & navigation
+                Test Incoming Call
               </ThemedText>
             </View>
           </View>
           <IconSymbol name="chevron.right" size={20} color="#8B5CF6" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleTestIncomingCall}>
-          <ThemedText>Test Incoming Call</ThemedText>
         </TouchableOpacity>
 
         <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.profileCard}>
@@ -143,11 +139,11 @@ const styles = StyleSheet.create({
   balanceAmount: { marginTop: 10, marginBottom: 16, fontSize: 36, padding: 5 },
   topUpButton: { backgroundColor: '#10B981', paddingHorizontal: 32, paddingVertical: 12, borderRadius: 16 },
   topUpText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  themeCard: { marginHorizontal: 20, borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
+  themeCard: { marginHorizontal: 20, marginTop: 20, borderRadius: 24, padding: 20, marginBottom: 6, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
   themeToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   themeInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   menuCard: { marginHorizontal: 20, borderRadius: 24, padding: 8, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
-  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 12, gap: 12 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 12, gap: 12, marginBottom: 6 },
   menuBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
   menuLabel: { flex: 1, fontSize: 16 },
   signOutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginHorizontal: 20, paddingVertical: 16, borderRadius: 16, backgroundColor: 'rgba(239, 68, 68, 0.1)' },
