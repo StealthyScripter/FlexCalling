@@ -93,7 +93,7 @@ export const APIService = {
     contacts = [];
   },
 
-  // ADDED: Helper to enrich a single call log with contact info
+  // Helper to enrich a single call log with contact info
   enrichCallLog: (callLog: CallUIData): EnrichedCallLog => {
     if (!callLog.call) return callLog;
 
@@ -112,7 +112,7 @@ export const APIService = {
     };
   },
 
-  // UPDATED: Return enriched call logs
+  // Return enriched call logs
   getCallLogs: (): EnrichedCallLog[] => {
     // Sort by most recent first and enrich with contact data
     return [...callLogs]
@@ -124,20 +124,37 @@ export const APIService = {
       .map(log => APIService.enrichCallLog(log));
   },
 
+  // UPDATED: Add deduplication to prevent duplicate saves
   saveCallLog: (call: CallUIData) => {
     if (!call.call || !call.callStartTime) {
       console.warn('Invalid call data, skipping save');
       return;
     }
+
+    // Check for duplicate by callSid to prevent duplicate saves
+    const isDuplicate = callLogs.some(
+      log => log.call?.callSid === call.call?.callSid
+    );
+
+    if (isDuplicate) {
+      console.log('Duplicate call log detected, skipping save for callSid:', call.call.callSid);
+      return;
+    }
+
     callLogs.push(call);
-    console.log('Call log saved:', call);
+    console.log('✅ Call log saved successfully:', {
+      callSid: call.call.callSid,
+      duration: call.callDuration,
+      cost: call.estimatedCost,
+      timestamp: call.callStartTime
+    });
   },
 
   clearCallLogs: () => {
     callLogs = [];
   },
 
-  // UPDATED: Get enriched call history for specific contact
+  // Get enriched call history for specific contact
   getCallLogsForContact: (contactPhone: string): EnrichedCallLog[] => {
     return callLogs
       .filter(log =>
@@ -196,4 +213,3 @@ export const mockDatabase = {
     if (user) user.balance = newBalance;
   },
 };
-

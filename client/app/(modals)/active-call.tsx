@@ -21,6 +21,9 @@ export default function ActiveCallScreen() {
   // Track if call log has been saved to prevent duplicates
   const callLogSavedRef = useRef(false);
 
+  // Track if we're in the process of ending the call
+  const isEndingCallRef = useRef(false);
+
   // NEW: Track contact info
   const [contactInfo, setContactInfo] = useState<{
     name: string;
@@ -89,10 +92,10 @@ export default function ActiveCallScreen() {
     }
   }, [call?.to, call?.from, call?.direction, call]);
 
-  // Save call log only once
+  // Save call log - only called once when ending call
   const saveCallLog = useCallback(() => {
     if (!call || callLogSavedRef.current) {
-      console.log('Call log already saved or no call data');
+      console.log('⏭️ Skipping save - already saved or no call data');
       return;
     }
 
@@ -107,7 +110,7 @@ export default function ActiveCallScreen() {
 
     APIService.saveCallLog(uiData);
     callLogSavedRef.current = true;
-    console.log('Call log saved (once):', uiData);
+    console.log('📞 Call log saved - Duration: ' + duration + 's, Cost: $' + cost.toFixed(2));
   }, [call, callData.callStartTime, duration, callData.ratePerMinute, cost]);
 
   const handleEndCall = () => {
@@ -121,8 +124,14 @@ export default function ActiveCallScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Save call log before ending
-              saveCallLog();
+              // Mark that we're ending the call
+              isEndingCallRef.current = true;
+
+              // Save call log ONCE with final duration BEFORE ending
+              if (call && !callLogSavedRef.current) {
+                console.log('💾 Saving call log on user end call');
+                saveCallLog();
+              }
 
               // End the call
               await endCall();
@@ -136,10 +145,7 @@ export default function ActiveCallScreen() {
             } catch (error) {
               console.error('Failed to end call:', error);
 
-              // Still save the log even if end call fails
-              saveCallLog();
-
-              // Navigate back
+              // Still navigate back even if end call fails
               if (router.canGoBack()) {
                 router.back();
               } else {
@@ -168,35 +174,57 @@ export default function ActiveCallScreen() {
     }
   };
 
+  // Reset saved flag when a new call starts
   useEffect(() => {
-    // Reset the saved flag when a new call starts
-    if (call) {
+    if (call && (call.state === 'connecting' || call.state === 'ringing')) {
+      console.log('🆕 New call detected, resetting saved flag');
       callLogSavedRef.current = false;
+      isEndingCallRef.current = false;
     }
+  }, [call?.callSid, call?.state, call]);
 
-    // If call ends unexpectedly, save and navigate
-    if (!call && callData.callStartTime) {
-      saveCallLog();
-
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace('/(tabs)');
-      }
-    }
-  }, [call, callData.callStartTime, router, saveCallLog]);
-
-  // Cleanup on unmount - save call log if not already saved
+  // Handle call disconnection - save and navigate
   useEffect(() => {
-    return () => {
-      if (call && !callLogSavedRef.current) {
-        console.log('Component unmounting, saving call log');
+    if (call && call.state === 'disconnected') {
+      // Save if not already saved and not deliberately ending
+      if (!callLogSavedRef.current && !isEndingCallRef.current) {
+        console.log('⚠️ Call disconnected unexpectedly, saving log');
         saveCallLog();
       }
-    };
-  }, [call, saveCallLog]);
 
-  if (!call || !contactInfo) return null;
+      // Navigate back after a brief delay
+      const timeout = setTimeout(() => {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)');
+        }
+      }, 1000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [call?.state, call, router, saveCallLog]);
+
+  // Navigate back if no call data
+  useEffect(() => {
+    if (!call) {
+      console.log('❌ No call data, navigating back');
+      const timeout = setTimeout(() => {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)');
+        }
+      }, 500);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [call, router]);
+
+  // Render nothing if no call or contact info
+  if (!call || !contactInfo) {
+    return null;
+  }
 
   return (
     <ThemedView style={styles.container}>
