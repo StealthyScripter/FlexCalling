@@ -1,4 +1,4 @@
-import { StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -7,6 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useState, useEffect } from 'react';
 import { APIService } from '@/services/api.service';
+import { useCall } from '@/contexts/call-context';
 
 // Import types and helpers
 import type { Contact, EnrichedCallLog } from '@/types';
@@ -25,6 +26,7 @@ export default function ContactDetailScreen() {
   const { contactId } = useLocalSearchParams();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
+  const { makeCall, isDeviceReady } = useCall();
 
   const [contact, setContact] = useState<Contact | null>(null);
   const [callHistory, setCallHistory] = useState<EnrichedCallLog[]>([]);
@@ -59,6 +61,9 @@ export default function ContactDetailScreen() {
           <ThemedText type="title">Contact Not Found</ThemedText>
           <View style={styles.spacer} />
         </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ThemedText style={{ opacity: 0.6 }}>Contact not available</ThemedText>
+        </View>
       </ThemedView>
     );
   }
@@ -69,8 +74,19 @@ export default function ContactDetailScreen() {
   const initials = getInitials(contact.name);
   const avatarColor = contact.avatarColor;
 
-  const handleMakeCall = () => {
-    router.push('/(modals)/active-call');
+  const handleMakeCall = async () => {
+    if (!isDeviceReady) {
+      Alert.alert('Not Ready', 'Device is not ready to make calls');
+      return;
+    }
+
+    try {
+      await makeCall(contact.phone);
+      router.push('/(modals)/active-call');
+    } catch (error) {
+      console.error('Failed to make call:', error);
+      Alert.alert('Error', 'Failed to make call');
+    }
   };
 
   const handleCallDetail = (callLog: EnrichedCallLog) => {
@@ -151,7 +167,7 @@ export default function ContactDetailScreen() {
 
               const direction = callLog.call.direction;
               const color = getCallTypeColor(direction);
-              const icon = getCallTypeIcon(direction);
+              const icon = getCallTypeIcon(direction) as any;
               const duration = formatDuration(callLog.callDuration);
               const date = formatDate(callLog.callStartTime);
               const time = formatTime(callLog.callStartTime);

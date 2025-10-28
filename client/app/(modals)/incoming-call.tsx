@@ -5,8 +5,10 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useCall } from '@/contexts/call-context';
+import { APIService } from '@/services/api.service';
+import { getFirstInitial } from '@/utils';
 
 export default function IncomingCallScreen() {
   const router = useRouter();
@@ -15,6 +17,34 @@ export default function IncomingCallScreen() {
 
   const { callData, acceptCall, rejectCall } = useCall();
   const incomingCall = callData.incomingCallInvite;
+
+  const [contactInfo, setContactInfo] = useState<{
+    name: string;
+    avatar: string;
+    initial: string;
+  } | null>(null);
+
+  // Load contact information
+  useEffect(() => {
+    if (incomingCall) {
+      const callerNumber = incomingCall.from;
+      const contact = APIService.getContactByPhone(callerNumber);
+
+      if (contact) {
+        setContactInfo({
+          name: contact.name,
+          avatar: contact.avatarColor,
+          initial: getFirstInitial(contact.name)
+        });
+      } else {
+        setContactInfo({
+          name: callerNumber,
+          avatar: '#3B82F6',
+          initial: getFirstInitial(callerNumber)
+        });
+      }
+    }
+  }, [incomingCall]);
 
   const handleAccept = async () => {
     try {
@@ -95,7 +125,7 @@ export default function IncomingCallScreen() {
     }
   }, [incomingCall, router]);
 
-  if (!incomingCall) {
+  if (!incomingCall || !contactInfo) {
     return (
       <ThemedView style={styles.container}>
         <View style={[styles.decorativeBlur, styles.blur1, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)' }]} />
@@ -109,8 +139,6 @@ export default function IncomingCallScreen() {
     );
   }
 
-  const callerNumber = incomingCall.from;
-  const callerInitial = callerNumber[0] || '?';
   const location = incomingCall.customParameters?.location || 'Unknown Location';
   const callId = incomingCall.callSid;
 
@@ -121,11 +149,11 @@ export default function IncomingCallScreen() {
 
       <View style={styles.callerInfo}>
         <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.callerCard}>
-          <View style={[styles.callerAvatar, { backgroundColor: '#3B82F6' }]}>
-            <ThemedText style={styles.callerInitial}>{callerInitial}</ThemedText>
+          <View style={[styles.callerAvatar, { backgroundColor: contactInfo.avatar }]}>
+            <ThemedText style={styles.callerInitial}>{contactInfo.initial}</ThemedText>
           </View>
 
-          <ThemedText type="title" style={styles.callerName}>{callerNumber}</ThemedText>
+          <ThemedText type="title" style={styles.callerName}>{contactInfo.name}</ThemedText>
 
           <View style={styles.locationBadge}>
             <IconSymbol name="mappin.circle.fill" size={16} color="#10B981" />

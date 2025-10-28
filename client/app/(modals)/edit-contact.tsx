@@ -1,45 +1,129 @@
 import { StyleSheet, TextInput, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { safeNavigateBack } from '@/utils/navigation';
+import { APIService } from '@/services/api.service';
+import type { Contact } from '@/types';
+import { getInitials } from '@/utils';
 
 export default function EditContactScreen() {
   const router = useRouter();
+  const { contactId } = useLocalSearchParams();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
 
-  // TODO: Get actual contact data from route params
-  const [firstName, setFirstName] = useState('John');
-  const [lastName, setLastName] = useState('Doe');
-  const [phoneNumber, setPhoneNumber] = useState('+254712345678');
-  const [email, setEmail] = useState('john.doe@email.com');
-  const [location, setLocation] = useState('Nairobi, Kenya');
-  const [isFavorite, setIsFavorite] = useState(true);
+  const [contact, setContact] = useState<Contact | null>(null);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [location, setLocation] = useState('');
+  const [isFavorite, setIsFavorite] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
 
+  // Load contact data
+  useEffect(() => {
+    if (contactId && typeof contactId === 'string') {
+      const foundContact = APIService.getContactById(contactId);
+      if (foundContact) {
+        setContact(foundContact);
+
+        // Parse full name into first and last name
+        const nameParts = foundContact.name.split(' ');
+        setFirstName(nameParts[0] || '');
+        setLastName(nameParts.slice(1).join(' ') || '');
+
+        setPhoneNumber(foundContact.phone);
+        setEmail(foundContact.email || '');
+        setLocation(foundContact.location || '');
+        setIsFavorite(foundContact.favorite);
+        setIsBlocked(foundContact.isBlocked || false);
+      }
+    }
+  }, [contactId]);
+
+  if (!contact) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => safeNavigateBack(router, '/(tabs)/contacts')} style={styles.backButton}>
+            <IconSymbol name="chevron.left" size={24} color={isDark ? '#F1F5F9' : '#111827'} />
+          </TouchableOpacity>
+          <ThemedText type="title">Contact Not Found</ThemedText>
+          <View style={styles.spacer} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ThemedText style={{ opacity: 0.6 }}>Contact not found</ThemedText>
+        </View>
+      </ThemedView>
+    );
+  }
+
+  const initials = getInitials(contact.name);
+
   const handleSave = () => {
-    // TODO: Implement save logic
-    Alert.alert('Success', 'Contact updated successfully');
-    router.back();
+    if (!firstName || !phoneNumber) {
+      Alert.alert('Error', 'Please enter at least a name and phone number');
+      return;
+    }
+
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    const updatedContact: Partial<Contact> = {
+      name: fullName,
+      phone: phoneNumber,
+      email: email || undefined,
+      location: location || undefined,
+      favorite: isFavorite,
+      isBlocked: isBlocked,
+    };
+
+    const result = APIService.updateContact(contact.id, updatedContact);
+
+    if (result) {
+      Alert.alert('Success', 'Contact updated successfully', [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Navigate back to contact detail with updated ID
+            router.back();
+          }
+        }
+      ]);
+    } else {
+      Alert.alert('Error', 'Failed to update contact');
+    }
   };
 
   const handleDelete = () => {
     Alert.alert(
       'Delete Contact',
-      'Are you sure you want to delete this contact?',
+      'Are you sure you want to delete this contact? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            // TODO: Implement delete logic
-            router.back();
+            const success = APIService.deleteContact(contact.id);
+            if (success) {
+              Alert.alert('Deleted', 'Contact has been deleted', [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    // Navigate to contacts list
+                    router.replace('/(tabs)/contacts');
+                  }
+                }
+              ]);
+            } else {
+              Alert.alert('Error', 'Failed to delete contact');
+            }
           },
         },
       ]
@@ -51,7 +135,7 @@ export default function EditContactScreen() {
       <View style={[styles.decorativeBlur, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]} />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => safeNavigateBack(router, '(tabs)/contacts')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => safeNavigateBack(router, '/(tabs)/contacts')} style={styles.backButton}>
           <IconSymbol name="chevron.left" size={24} color={isDark ? '#F1F5F9' : '#111827'} />
         </TouchableOpacity>
         <ThemedText type="title">Edit Contact</ThemedText>
@@ -60,8 +144,8 @@ export default function EditContactScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.avatarCard}>
-          <TouchableOpacity style={[styles.avatarPlaceholder, { backgroundColor: '#3B82F6' }]}>
-            <ThemedText style={styles.avatarInitial}>JD</ThemedText>
+          <TouchableOpacity style={[styles.avatarPlaceholder, { backgroundColor: contact.avatarColor }]}>
+            <ThemedText style={styles.avatarInitial}>{initials}</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={styles.changePhotoButton}>
             <IconSymbol name="camera.fill" size={16} color="#10B981" />
@@ -108,7 +192,7 @@ export default function EditContactScreen() {
             <IconSymbol name="envelope.fill" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder="Email (optional)"
               placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'}
               keyboardType="email-address"
               value={email}
@@ -120,7 +204,7 @@ export default function EditContactScreen() {
             <IconSymbol name="mappin.circle.fill" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
             <TextInput
               style={styles.input}
-              placeholder="Location"
+              placeholder="Location (e.g., Nairobi, Kenya)"
               placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'}
               value={location}
               onChangeText={setLocation}
@@ -163,7 +247,15 @@ export default function EditContactScreen() {
             <IconSymbol name="chevron.right" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionItem, styles.actionBorder]}>
+          <TouchableOpacity
+            style={[styles.actionItem, styles.actionBorder]}
+            onPress={() => {
+              router.push({
+                pathname: '/(modals)/contact-detail',
+                params: { contactId: contact.id }
+              });
+            }}
+          >
             <IconSymbol name="clock.fill" size={20} color="#10B981" />
             <ThemedText style={styles.actionText}>View Call History</ThemedText>
             <IconSymbol name="chevron.right" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />

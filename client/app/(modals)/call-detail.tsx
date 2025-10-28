@@ -1,4 +1,4 @@
-import { StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -7,6 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useState, useEffect } from 'react';
 import { APIService } from '@/services/api.service';
+import { useCall } from '@/contexts/call-context';
 
 // Import types and helpers
 import type { EnrichedCallLog } from '@/types';
@@ -26,6 +27,7 @@ export default function CallDetailScreen() {
   const { callSid } = useLocalSearchParams();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
+  const { makeCall, isDeviceReady } = useCall();
 
   const [callLog, setCallLog] = useState<EnrichedCallLog | null>(null);
 
@@ -78,7 +80,7 @@ export default function CallDetailScreen() {
   // Call type info using helpers
   const callType = call.direction || 'outgoing';
   const callTypeColor = getCallTypeColor(callType);
-  const callTypeIcon = getCallTypeIcon(callType);
+  const callTypeIcon = getCallTypeIcon(callType) as any;
   const callTypeLabel = getCallTypeLabel(callType);
 
   // Format duration using helper
@@ -92,8 +94,19 @@ export default function CallDetailScreen() {
   const callDate = callLog.callStartTime || new Date();
   const fullDateTime = formatFullDateTime(callDate);
 
-  const handleCallBack = () => {
-    router.push('/(tabs)/keypad');
+  const handleCallBack = async () => {
+    if (!isDeviceReady) {
+      Alert.alert('Not Ready', 'Device is not ready to make calls');
+      return;
+    }
+
+    try {
+      await makeCall(phoneNumber);
+      router.push('/(modals)/active-call');
+    } catch (error) {
+      console.error('Failed to make call:', error);
+      Alert.alert('Error', 'Failed to make call');
+    }
   };
 
   const handleViewContact = () => {

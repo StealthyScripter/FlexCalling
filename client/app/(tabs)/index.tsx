@@ -133,7 +133,7 @@ export default function RecentsScreen() {
         {today.length > 0 && <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>TODAY</ThemedText>}
         {today.map(call => <View key={call.call?.callSid} style={{ marginBottom: 12 }}>{renderCallItem(call)}</View>)}
 
-        {earlier.length > 0 && <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, { marginTop: 24 }]}>EARLIER</ThemedText>}
+        {/* {earlier.length > 0 && <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, { marginTop: 24 }]}>EARLIER</ThemedText>} */}
         {earlier.map(call => <View key={call.call?.callSid} style={{ marginBottom: 12 }}>{renderCallItem(call)}</View>)}
 
         {callLogs.length === 0 && (

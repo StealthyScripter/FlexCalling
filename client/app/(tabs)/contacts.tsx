@@ -1,16 +1,18 @@
-import { StyleSheet, FlatList, TouchableOpacity, View, TextInput } from 'react-native';
+import { StyleSheet, FlatList, TouchableOpacity, View, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCall } from '@/contexts/call-context';
+import { useFocusEffect } from '@react-navigation/native';
 
-// Import Contact type from @/types instead of api.service
+// Import Contact type from @/types
 import type { Contact } from '@/types';
 import { APIService } from '@/services/api.service';
+import { getFirstInitial } from '@/utils';
 
 export default function ContactsScreen() {
   const router = useRouter();
@@ -18,12 +20,23 @@ export default function ContactsScreen() {
   const isDark = colorScheme === 'dark';
   const { makeCall, isDeviceReady } = useCall();
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchContacts = () => setContacts(APIService.getContacts());
+  const fetchContacts = () => {
+    const allContacts = APIService.getContacts();
+    setContacts(allContacts);
+  };
 
   useEffect(() => {
     fetchContacts();
   }, []);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchContacts();
+    }, [])
+  );
 
   const handleContactDetail = (contact: Contact) => {
     router.push({
@@ -37,14 +50,25 @@ export default function ContactsScreen() {
   };
 
   const handleMakeCall = async (contact: Contact) => {
-    if (!isDeviceReady) return;
+    if (!isDeviceReady) {
+      Alert.alert('Not Ready', 'Device is not ready to make calls');
+      return;
+    }
+
     try {
       await makeCall(contact.phone);
       router.push('/(modals)/active-call');
     } catch (error) {
       console.error('Failed to make call:', error);
+      Alert.alert('Error', 'Failed to make call');
     }
   };
+
+  // Filter contacts based on search query
+  const filteredContacts = contacts.filter(contact =>
+    contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    contact.phone.includes(searchQuery)
+  );
 
   return (
     <ThemedView style={styles.container}>
@@ -63,42 +87,57 @@ export default function ContactsScreen() {
           placeholder="Search contacts..."
           placeholderTextColor={isDark ? '#94A3B8' : '#6B7280'}
           style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
         />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <IconSymbol name="xmark.circle.fill" size={20} color={isDark ? '#94A3B8' : '#6B7280'} />
+          </TouchableOpacity>
+        )}
       </BlurView>
 
-      <FlatList
-        data={contacts}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.contactCard}>
-            <TouchableOpacity
-              style={styles.contactContent}
-              onPress={() => handleContactDetail(item)}
-            >
-              <View style={[styles.avatar, { backgroundColor: item.avatarColor }]}>
-                <ThemedText style={styles.avatarText}>{item.name[0]}</ThemedText>
-              </View>
-              <View style={styles.contactInfo}>
-                <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-                <ThemedText style={styles.phone}>{item.phone}</ThemedText>
-              </View>
-              {item.favorite && (
-                <View style={styles.favoriteBadge}>
-                  <IconSymbol name="star.fill" size={16} color="#F59E0B" />
-                </View>
-              )}
+      {filteredContacts.length === 0 ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ThemedText style={{ opacity: 0.6 }}>
+            {searchQuery ? 'No contacts found' : 'No contacts yet'}
+          </ThemedText>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredContacts}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.contactCard}>
               <TouchableOpacity
-                style={styles.callIconButton}
-                onPress={() => handleMakeCall(item)}
+                style={styles.contactContent}
+                onPress={() => handleContactDetail(item)}
               >
-                <IconSymbol name="phone.fill" size={20} color="#10B981" />
+                <View style={[styles.avatar, { backgroundColor: item.avatarColor }]}>
+                  <ThemedText style={styles.avatarText}>{getFirstInitial(item.name)}</ThemedText>
+                </View>
+                <View style={styles.contactInfo}>
+                  <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
+                  <ThemedText style={styles.phone}>{item.phone}</ThemedText>
+                </View>
+                {item.favorite && (
+                  <View style={styles.favoriteBadge}>
+                    <IconSymbol name="star.fill" size={16} color="#F59E0B" />
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.callIconButton}
+                  onPress={() => handleMakeCall(item)}
+                >
+                  <IconSymbol name="phone.fill" size={20} color="#10B981" />
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
-          </BlurView>
-        )}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      />
+            </BlurView>
+          )}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -110,7 +149,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
   addButton: {},
   searchBar: { marginHorizontal: 20, borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
-  searchInput: { flex: 1, fontSize: 16, color: '#111827' },
+  searchInput: { flex: 1, fontSize: 16 },
   contactCard: { marginHorizontal: 20, marginBottom: 12, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
   contactContent: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
   avatar: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
