@@ -6,7 +6,19 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useState, useEffect } from 'react';
-import { APIService, Contact, EnrichedCallLog } from '@/services/api.service';
+import { APIService } from '@/services/api.service';
+
+// Import types and helpers
+import type { Contact, EnrichedCallLog } from '@/types';
+import {
+  formatDate,
+  formatTime,
+  formatDuration,
+  formatCurrency,
+  getCallTypeColor,
+  getCallTypeIcon,
+  getInitials,
+} from '@/utils';
 
 export default function ContactDetailScreen() {
   const router = useRouter();
@@ -51,60 +63,11 @@ export default function ContactDetailScreen() {
     );
   }
 
+  // Use helpers for contact display
   const displayName = contact.name;
   const displayPhone = contact.phone;
-  const initials = contact.name.split(' ').map(n => n[0]).join('').toUpperCase();
+  const initials = getInitials(contact.name);
   const avatarColor = contact.avatarColor;
-
-  const getCallTypeColor = (direction: string) => {
-    switch (direction) {
-      case 'outgoing': return '#10B981';
-      case 'incoming': return '#3B82F6';
-      case 'missed': return '#EF4444';
-      default: return '#6B7280';
-    }
-  };
-
-  const getCallTypeIcon = (direction: string) => {
-    switch (direction) {
-      case 'outgoing': return 'phone.arrow.up.right.fill';
-      case 'incoming': return 'phone.arrow.down.left.fill';
-      case 'missed': return 'phone.down.fill';
-      default: return 'phone.fill';
-    }
-  };
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatDate = (date: Date): string => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else {
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
-      });
-    }
-  };
-
-  const formatTime = (date: Date): string => {
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
 
   const handleMakeCall = () => {
     router.push('/(modals)/active-call');
@@ -192,7 +155,7 @@ export default function ContactDetailScreen() {
               const duration = formatDuration(callLog.callDuration);
               const date = formatDate(callLog.callStartTime);
               const time = formatTime(callLog.callStartTime);
-              const cost = `$${callLog.estimatedCost.toFixed(2)}`;
+              const cost = formatCurrency(callLog.estimatedCost);
 
               return (
                 <BlurView
@@ -248,7 +211,6 @@ const styles = StyleSheet.create({
   decorativeBlur: { position: 'absolute', width: 280, height: 280, borderRadius: 200, top: -100, right: -80, opacity: 0.6 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 24 },
   backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' },
-  editButton: {},
   spacer: { width: 44 },
 
   // Contact Card

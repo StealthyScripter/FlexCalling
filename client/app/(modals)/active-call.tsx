@@ -1,4 +1,3 @@
-// client/app/(modals)/active-call.tsx
 import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
@@ -9,7 +8,21 @@ import { BlurView } from 'expo-blur';
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useCall } from '@/contexts/call-context';
 import { APIService } from '@/services/api.service';
-import { CallUIData } from '@/types/twilio';
+
+// Import types and helpers
+import type { CallUIData } from '@/types';
+import {
+  formatDuration,
+  getCallStateInfo,
+  formatCurrency,
+  getFirstInitial,
+} from '@/utils';
+
+interface ContactInfo {
+  name: string;
+  avatar: string;
+  initial: string;
+}
 
 export default function ActiveCallScreen() {
   const router = useRouter();
@@ -18,18 +31,9 @@ export default function ActiveCallScreen() {
 
   const { callData, endCall, toggleMute, toggleSpeaker, audioDevice } = useCall();
 
-  // Track if call log has been saved to prevent duplicates
   const callLogSavedRef = useRef(false);
-
-  // Track if we're in the process of ending the call
   const isEndingCallRef = useRef(false);
-
-  // NEW: Track contact info
-  const [contactInfo, setContactInfo] = useState<{
-    name: string;
-    avatar: string;
-    initial: string;
-  } | null>(null);
+  const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
 
   const call = callData.call;
   const duration = callData.callDuration;
@@ -38,61 +42,10 @@ export default function ActiveCallScreen() {
   const isMuted = call?.isMuted || false;
   const isSpeaker = audioDevice?.type === 'speaker';
 
-  // NEW: Get display state information
-  const getCallStateInfo = () => {
-    if (!call) return { text: 'Initializing...', color: '#6B7280', showDuration: false };
+  // Get call state info using helper
+  const stateInfo = call ? getCallStateInfo(call.state) : { text: 'Initializing...', color: '#6B7280', showDuration: false };
 
-    switch (call.state) {
-      case 'pending':
-        return { text: 'Calling...', color: '#F59E0B', showDuration: false };
-      case 'connecting':
-        return { text: 'Calling...', color: '#F59E0B', showDuration: false };
-      case 'ringing':
-        return { text: 'Ringing...', color: '#3B82F6', showDuration: false };
-      case 'connected':
-        return { text: 'Connected', color: '#10B981', showDuration: true };
-      case 'reconnecting':
-        return { text: 'Reconnecting...', color: '#F59E0B', showDuration: false };
-      default:
-        return { text: 'Unknown', color: '#6B7280', showDuration: false };
-    }
-  };
-
-  const stateInfo = getCallStateInfo();
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // NEW: Load contact information
-  useEffect(() => {
-    if (!call) return;
-
-    // Get the phone number to lookup (destination for outgoing calls)
-    const phoneToLookup = call.direction === 'outgoing' ? call.to : call.from;
-    const contact = APIService.getContactByPhone(phoneToLookup);
-
-    if (contact) {
-      // Contact found
-      setContactInfo({
-        name: contact.name,
-        avatar: contact.avatarColor,
-        initial: contact.name.split(' ').map(n => n[0]).join('').toUpperCase()
-      });
-    } else {
-      // No contact found, use phone number
-      const phoneNumber = phoneToLookup;
-      setContactInfo({
-        name: phoneNumber,
-        avatar: '#8B5CF6', // Default purple
-        initial: phoneNumber[0] || '?'
-      });
-    }
-  }, [call?.to, call?.from, call?.direction, call]);
-
-  // Save call log - only called once when ending call
+  // Save call log
   const saveCallLog = useCallback(() => {
     if (!call || callLogSavedRef.current) {
       console.log('⏭️ Skipping save - already saved or no call data');
@@ -110,7 +63,7 @@ export default function ActiveCallScreen() {
 
     APIService.saveCallLog(uiData);
     callLogSavedRef.current = true;
-    console.log('📞 Call log saved - Duration: ' + duration + 's, Cost: $' + cost.toFixed(2));
+    console.log('📞 Call log saved - Duration: ' + duration + 's, Cost: ' + formatCurrency(cost));
   }, [call, callData.callStartTime, duration, callData.ratePerMinute, cost]);
 
   const handleEndCall = () => {
@@ -124,19 +77,15 @@ export default function ActiveCallScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Mark that we're ending the call
               isEndingCallRef.current = true;
 
-              // Save call log ONCE with final duration BEFORE ending
               if (call && !callLogSavedRef.current) {
                 console.log('💾 Saving call log on user end call');
                 saveCallLog();
               }
 
-              // End the call
               await endCall();
 
-              // Navigate back
               if (router.canGoBack()) {
                 router.back();
               } else {
@@ -145,7 +94,6 @@ export default function ActiveCallScreen() {
             } catch (error) {
               console.error('Failed to end call:', error);
 
-              // Still navigate back even if end call fails
               if (router.canGoBack()) {
                 router.back();
               } else {
@@ -174,6 +122,28 @@ export default function ActiveCallScreen() {
     }
   };
 
+  // Load contact information using helper
+  useEffect(() => {
+    if (!call) return;
+
+    const phoneToLookup = call.direction === 'outgoing' ? call.to : call.from;
+    const contact = APIService.getContactByPhone(phoneToLookup);
+
+    if (contact) {
+      setContactInfo({
+        name: contact.name,
+        avatar: contact.avatarColor,
+        initial: getFirstInitial(contact.name)
+      });
+    } else {
+      setContactInfo({
+        name: phoneToLookup,
+        avatar: '#8B5CF6',
+        initial: getFirstInitial(phoneToLookup)
+      });
+    }
+  }, [call?.to, call?.from, call?.direction, call]);
+
   // Reset saved flag when a new call starts
   useEffect(() => {
     if (call && (call.state === 'connecting' || call.state === 'ringing')) {
@@ -183,16 +153,14 @@ export default function ActiveCallScreen() {
     }
   }, [call?.callSid, call?.state, call]);
 
-  // Handle call disconnection - save and navigate
+  // Handle call disconnection
   useEffect(() => {
     if (call && call.state === 'disconnected') {
-      // Save if not already saved and not deliberately ending
       if (!callLogSavedRef.current && !isEndingCallRef.current) {
         console.log('⚠️ Call disconnected unexpectedly, saving log');
         saveCallLog();
       }
 
-      // Navigate back after a brief delay
       const timeout = setTimeout(() => {
         if (router.canGoBack()) {
           router.back();
@@ -221,7 +189,6 @@ export default function ActiveCallScreen() {
     }
   }, [call, router]);
 
-  // Render nothing if no call or contact info
   if (!call || !contactInfo) {
     return null;
   }
@@ -232,15 +199,12 @@ export default function ActiveCallScreen() {
 
       <View style={styles.callerInfo}>
         <BlurView intensity={isDark ? 30 : 70} tint={colorScheme} style={styles.callerCard}>
-          {/* NEW: Avatar with contact color */}
           <View style={[styles.callerAvatar, { backgroundColor: contactInfo.avatar }]}>
             <ThemedText style={styles.callerInitial}>{contactInfo.initial}</ThemedText>
           </View>
 
-          {/* NEW: Contact name instead of phone number */}
           <ThemedText type="title" style={styles.callerName}>{contactInfo.name}</ThemedText>
 
-          {/* NEW: Conditional duration display - only when connected */}
           {stateInfo.showDuration ? (
             <>
               <View style={styles.durationBadge}>
@@ -250,11 +214,12 @@ export default function ActiveCallScreen() {
 
               <View style={styles.rateBadge}>
                 <IconSymbol name="dollarsign.circle.fill" size={16} color="#10B981" />
-                <ThemedText style={styles.callRate}>${cost.toFixed(2)} • ${callData.ratePerMinute}/min</ThemedText>
+                <ThemedText style={styles.callRate}>
+                  {formatCurrency(cost)} • {formatCurrency(callData.ratePerMinute)}/min
+                </ThemedText>
               </View>
             </>
           ) : (
-            // NEW: Show call state when not connected
             <View style={[styles.stateBadge, { backgroundColor: stateInfo.color + '20' }]}>
               <ThemedText style={[styles.stateText, { color: stateInfo.color }]}>
                 {stateInfo.text}
@@ -262,7 +227,6 @@ export default function ActiveCallScreen() {
             </View>
           )}
 
-          {/* NEW: Always show direction badge */}
           <View style={styles.directionBadge}>
             <IconSymbol
               name={call.direction === 'outgoing' ? 'phone.arrow.up.right.fill' : 'phone.arrow.down.left.fill'}

@@ -6,8 +6,11 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useState, useEffect } from 'react';
-import { APIService, Contact } from '@/services/api.service';
 import { useCall } from '@/contexts/call-context';
+
+// Import Contact type from @/types instead of api.service
+import type { Contact } from '@/types';
+import { APIService } from '@/services/api.service';
 
 export default function ContactsScreen() {
   const router = useRouter();

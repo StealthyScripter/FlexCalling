@@ -7,18 +7,26 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { APIService, EnrichedCallLog } from '@/services/api.service';
 import { useCall } from '@/contexts/call-context';
+
+// Import types and helpers
+import type { EnrichedCallLog } from '@/types';
+import { APIService } from '@/services/api.service';
+import {
+  getCallTypeIcon,
+  getCallTypeColor,
+  timeSince,
+  getDisplayName,
+  getFirstInitial,
+} from '@/utils';
 
 export default function RecentsScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
-
   const { makeCall, isDeviceReady } = useCall();
   const [callLogs, setCallLogs] = useState<EnrichedCallLog[]>([]);
 
-  // Fetch call logs from mock DB
   const fetchCallLogs = () => {
     setCallLogs(APIService.getCallLogs());
   };
@@ -27,34 +35,11 @@ export default function RecentsScreen() {
     fetchCallLogs();
   }, []);
 
-  // Refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       fetchCallLogs();
     }, [])
   );
-
-  const getCallIcon = (call: EnrichedCallLog) => {
-    const type = call.call?.direction === 'outgoing' ? 'outgoing' :
-                 call.call?.direction === 'incoming' ? 'incoming' : 'missed';
-    switch(type) {
-      case 'outgoing': return 'phone.arrow.up.right.fill';
-      case 'incoming': return 'phone.arrow.down.left.fill';
-      case 'missed': return 'phone.down.fill';
-      default: return 'phone.fill';
-    }
-  };
-
-  const getCallColor = (call: EnrichedCallLog) => {
-    const type = call.call?.direction === 'outgoing' ? 'outgoing' :
-                 call.call?.direction === 'incoming' ? 'incoming' : 'missed';
-    switch(type) {
-      case 'outgoing': return '#10B981';
-      case 'incoming': return '#3B82F6';
-      case 'missed': return '#EF4444';
-      default: return '#6B7280';
-    }
-  };
 
   const handleCallDetail = (call: EnrichedCallLog) => {
     if (call.call?.callSid) {
@@ -66,8 +51,8 @@ export default function RecentsScreen() {
   };
 
   const handleMakeCall = async (call: EnrichedCallLog) => {
-    if (!isDeviceReady) return;
-    if (!call.call?.to) return;
+    if (!isDeviceReady || !call.call?.to) return;
+
     try {
       await makeCall(call.call.to);
       router.push('/(modals)/active-call');
@@ -77,13 +62,13 @@ export default function RecentsScreen() {
   };
 
   const renderCallItem = (call: EnrichedCallLog) => {
-    const displayName = call.contactName || call.call?.to || 'Unknown';
+    // Use helper functions for all display logic
+    const displayName = getDisplayName(call.contactName, call.call?.to);
     const phoneNumber = call.call?.direction === 'outgoing' ? call.call.to : call.call?.from;
-    const initial = displayName[0]?.toUpperCase() || '?';
+    const initial = getFirstInitial(displayName);
     const time = call.callStartTime ? timeSince(call.callStartTime) : 'Unknown';
-
-    // UPDATED: Use contact avatar color if available
     const avatarColor = call.contactAvatar || '#3B82F6';
+    const direction = call.call?.direction || 'unknown';
 
     return (
       <BlurView key={call.call?.callSid} intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.callCard}>
@@ -100,9 +85,9 @@ export default function RecentsScreen() {
               <ThemedText style={styles.phoneSubtext}>{phoneNumber}</ThemedText>
             )}
             <View style={styles.callMeta}>
-              <View style={[styles.callBadge, { backgroundColor: getCallColor(call) + '20' }]}>
-                <IconSymbol name={getCallIcon(call)} size={12} color={getCallColor(call)} />
-                <ThemedText style={[styles.callTime, { color: getCallColor(call) }]}>{time}</ThemedText>
+              <View style={[styles.callBadge, { backgroundColor: getCallTypeColor(direction) + '20' }]}>
+                <IconSymbol name={getCallTypeIcon(direction)} size={12} color={getCallTypeColor(direction)} />
+                <ThemedText style={[styles.callTime, { color: getCallTypeColor(direction) }]}>{time}</ThemedText>
               </View>
             </View>
           </View>
@@ -115,17 +100,6 @@ export default function RecentsScreen() {
         </TouchableOpacity>
       </BlurView>
     );
-  };
-
-  const timeSince = (date: Date) => {
-    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h`;
-    const days = Math.floor(hours / 24);
-    return days === 1 ? 'Yesterday' : `${days}d`;
   };
 
   const today = callLogs.filter(call => {
@@ -186,7 +160,7 @@ const styles = StyleSheet.create({
   avatar: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: '#fff', fontSize: 20, fontWeight: '600' },
   callInfo: { flex: 1 },
-  phoneSubtext: { fontSize: 12, opacity: 0.5, marginTop: 2 }, // ADDED
+  phoneSubtext: { fontSize: 12, opacity: 0.5, marginTop: 2 },
   callMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   callBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   callTime: { fontSize: 12, fontWeight: '600' },

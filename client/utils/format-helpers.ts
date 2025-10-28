@@ -1,6 +1,3 @@
-/**
- * Format date as "Today", "Yesterday", or readable date
- */
 export function formatDate(date: Date): string {
   const today = new Date();
   const yesterday = new Date(today);
@@ -62,4 +59,50 @@ export function timeSince(date: Date): string {
  */
 export function formatFullDateTime(date: Date): string {
   return `${formatDate(date)} at ${formatTime(date)}`;
+}
+
+/**
+ * Format currency amount
+ */
+export function formatCurrency(amount: number, currency: string = 'USD'): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+/**
+ * Format phone number to E.164 format
+ */
+export function formatPhoneNumber(phone: string, countryCode: string = '+254'): string {
+  // Remove all non-numeric characters
+  let cleaned = phone.replace(/\D/g, '');
+
+  // If starts with 0, remove it (for Kenyan numbers)
+  if (cleaned.startsWith('0')) {
+    cleaned = cleaned.substring(1);
+  }
+
+  // If doesn't start with country code, add it
+  if (!cleaned.startsWith(countryCode.replace('+', ''))) {
+    cleaned = countryCode.replace('+', '') + cleaned;
+  }
+
+  return '+' + cleaned;
+}
+
+/**
+ * Format phone number for display (with country code)
+ */
+export function formatPhoneNumberDisplay(phone: string): string {
+  // Assuming E.164 format
+  if (phone.startsWith('+254')) {
+    // Kenya: +254 712 345 678
+    const cleaned = phone.replace('+254', '');
+    return `+254 ${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6)}`;
+  }
+
+  return phone;
 }

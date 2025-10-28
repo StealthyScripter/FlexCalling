@@ -1,5 +1,5 @@
 import { EventEmitter } from 'eventemitter3';
-import {
+import type {
   Call,
   CallInvite,
   ConnectOptions,
@@ -7,9 +7,9 @@ import {
   CallDisconnectedEvent,
   CallInviteEvent,
   TwilioError,
-  TwilioErrorCode,
   AudioDevice,
-} from '@/types/twilio';
+} from '@/types';
+import { TwilioErrorCode } from '@/types';
 
 class MockTwilioVoiceSDK extends EventEmitter {
   private isRegistered = false;
@@ -27,8 +27,8 @@ class MockTwilioVoiceSDK extends EventEmitter {
   // ============================================
 
   async register(accessToken: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    // Simulate network delay
+    return new Promise((resolve, reject) => {
+      // Simulate network delay
       setTimeout(() => {
         if (!accessToken || accessToken.length < 10) {
           const error: TwilioError = {

@@ -1,12 +1,7 @@
-import { CallUIData } from '@/types/twilio';
+import type { Contact, User, CallUIData, EnrichedCallLog } from '@/types';
 
-export interface Contact {
-  id: string;
-  name: string;
-  phone: string;
-  favorite: boolean;
-  avatarColor: string;
-}
+// Re-export Contact type so other files can import it from here if needed
+export type { Contact, User, EnrichedCallLog };
 
 // Mock contacts database
 let contacts: Contact[] = [
@@ -16,20 +11,20 @@ let contacts: Contact[] = [
   { id: '4', name: 'David Brown', phone: '+254745678901', favorite: false, avatarColor: '#8B5CF6' },
 ];
 
-// FIXED: Add initial mock call logs with proper phone numbers matching contacts
+// Initial mock call logs with proper phone numbers matching contacts
 let callLogs: CallUIData[] = [
   {
     call: {
       callSid: 'CA001',
       from: '+1234567890',
-      to: '+254712345678', // Alice Johnson
+      to: '+254712345678',
       state: 'connected',
       direction: 'outgoing',
       isMuted: false,
       isOnHold: false,
     },
     incomingCallInvite: null,
-    callStartTime: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    callStartTime: new Date(Date.now() - 2 * 60 * 60 * 1000),
     callDuration: 125,
     ratePerMinute: 0.15,
     estimatedCost: 0.31,
@@ -37,7 +32,7 @@ let callLogs: CallUIData[] = [
   {
     call: {
       callSid: 'CA002',
-      from: '+254723456789', // Bob Williams
+      from: '+254723456789',
       to: '+1234567890',
       state: 'connected',
       direction: 'incoming',
@@ -45,7 +40,7 @@ let callLogs: CallUIData[] = [
       isOnHold: false,
     },
     incomingCallInvite: null,
-    callStartTime: new Date(Date.now() - 24 * 60 * 60 * 1000), // Yesterday
+    callStartTime: new Date(Date.now() - 24 * 60 * 60 * 1000),
     callDuration: 320,
     ratePerMinute: 0.15,
     estimatedCost: 0.80,
@@ -54,27 +49,25 @@ let callLogs: CallUIData[] = [
     call: {
       callSid: 'CA003',
       from: '+1234567890',
-      to: '+254734567890', // Carol Davis
+      to: '+254734567890',
       state: 'connected',
       direction: 'outgoing',
       isMuted: false,
       isOnHold: false,
     },
     incomingCallInvite: null,
-    callStartTime: new Date(Date.now() - 48 * 60 * 60 * 1000), // 2 days ago
+    callStartTime: new Date(Date.now() - 48 * 60 * 60 * 1000),
     callDuration: 540,
     ratePerMinute: 0.15,
     estimatedCost: 1.35,
   },
 ];
 
-export interface EnrichedCallLog extends CallUIData {
-  contactName?: string;
-  contactId?: string;
-  contactAvatar?: string;
-}
-
 export const APIService = {
+  // ============================================
+  // CONTACTS
+  // ============================================
+
   getContacts: (): Contact[] => [...contacts],
 
   getContactById: (id: string): Contact | undefined => {
@@ -85,19 +78,39 @@ export const APIService = {
     return contacts.find(c => c.phone === phone);
   },
 
-  addContact: (contact: Contact) => {
+  addContact: (contact: Contact): void => {
     contacts.push(contact);
   },
 
-  clearContacts: () => {
+  updateContact: (id: string, updates: Partial<Contact>): Contact | null => {
+    const index = contacts.findIndex(c => c.id === id);
+    if (index !== -1) {
+      contacts[index] = { ...contacts[index], ...updates };
+      return contacts[index];
+    }
+    return null;
+  },
+
+  deleteContact: (id: string): boolean => {
+    const index = contacts.findIndex(c => c.id === id);
+    if (index !== -1) {
+      contacts.splice(index, 1);
+      return true;
+    }
+    return false;
+  },
+
+  clearContacts: (): void => {
     contacts = [];
   },
 
-  // Helper to enrich a single call log with contact info
+  // ============================================
+  // CALL LOGS
+  // ============================================
+
   enrichCallLog: (callLog: CallUIData): EnrichedCallLog => {
     if (!callLog.call) return callLog;
 
-    // Determine the phone number to look up based on call direction
     const phoneToLookup = callLog.call.direction === 'outgoing'
       ? callLog.call.to
       : callLog.call.from;
@@ -112,9 +125,7 @@ export const APIService = {
     };
   },
 
-  // Return enriched call logs
   getCallLogs: (): EnrichedCallLog[] => {
-    // Sort by most recent first and enrich with contact data
     return [...callLogs]
       .sort((a, b) => {
         const aTime = a.callStartTime?.getTime() ?? 0;
@@ -124,14 +135,13 @@ export const APIService = {
       .map(log => APIService.enrichCallLog(log));
   },
 
-  // UPDATED: Add deduplication to prevent duplicate saves
-  saveCallLog: (call: CallUIData) => {
+  saveCallLog: (call: CallUIData): void => {
     if (!call.call || !call.callStartTime) {
       console.warn('Invalid call data, skipping save');
       return;
     }
 
-    // Check for duplicate by callSid to prevent duplicate saves
+    // Check for duplicate
     const isDuplicate = callLogs.some(
       log => log.call?.callSid === call.call?.callSid
     );
@@ -150,11 +160,6 @@ export const APIService = {
     });
   },
 
-  clearCallLogs: () => {
-    callLogs = [];
-  },
-
-  // Get enriched call history for specific contact
   getCallLogsForContact: (contactPhone: string): EnrichedCallLog[] => {
     return callLogs
       .filter(log =>
@@ -168,15 +173,14 @@ export const APIService = {
       .map(log => APIService.enrichCallLog(log));
   },
 
+  clearCallLogs: (): void => {
+    callLogs = [];
+  },
 };
 
-export interface User {
-  id: string;
-  name: string;
-  phone: string;
-  balance: number;
-  email: string;
-}
+// ============================================
+// USER/ACCOUNT MANAGEMENT
+// ============================================
 
 const users: User[] = [
   {
@@ -201,14 +205,16 @@ export const mockDatabase = {
   getCurrentUser: (): User | null => {
     return users.find(u => u.id === currentUserId) || null;
   },
-  setCurrentUser: (id: string) => {
+
+  setCurrentUser: (id: string): void => {
     if (users.some(u => u.id === id)) {
       currentUserId = id;
     } else {
       console.warn('User ID not found');
     }
   },
-  updateUserBalance: (id: string, newBalance: number) => {
+
+  updateUserBalance: (id: string, newBalance: number): void => {
     const user = users.find(u => u.id === id);
     if (user) user.balance = newBalance;
   },
