@@ -26,25 +26,28 @@ export default function EditContactScreen() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
 
-  // Load contact data
+  // ✅ Load contact data asynchronously
   useEffect(() => {
-    if (contactId && typeof contactId === 'string') {
-      const foundContact = APIService.getContactById(contactId);
-      if (foundContact) {
-        setContact(foundContact);
+    const fetchContact = async () => {
+      if (contactId && typeof contactId === 'string') {
+        const foundContact = await APIService.getContactById(contactId);
+        if (foundContact) {
+          setContact(foundContact);
 
-        // Parse full name into first and last name
-        const nameParts = foundContact.name.split(' ');
-        setFirstName(nameParts[0] || '');
-        setLastName(nameParts.slice(1).join(' ') || '');
+          const nameParts = foundContact.name.split(' ');
+          setFirstName(nameParts[0] || '');
+          setLastName(nameParts.slice(1).join(' ') || '');
 
-        setPhoneNumber(foundContact.phone);
-        setEmail(foundContact.email || '');
-        setLocation(foundContact.location || '');
-        setIsFavorite(foundContact.favorite);
-        setIsBlocked(foundContact.isBlocked || false);
+          setPhoneNumber(foundContact.phone);
+          setEmail(foundContact.email || '');
+          setLocation(foundContact.location || '');
+          setIsFavorite(foundContact.favorite);
+          setIsBlocked(foundContact.isBlocked || false);
+        }
       }
-    }
+    };
+
+    fetchContact();
   }, [contactId]);
 
   if (!contact) {
@@ -66,7 +69,8 @@ export default function EditContactScreen() {
 
   const initials = getInitials(contact.name);
 
-  const handleSave = () => {
+  // ✅ Handle Save
+  const handleSave = async () => {
     if (!firstName || !phoneNumber) {
       Alert.alert('Error', 'Please enter at least a name and phone number');
       return;
@@ -83,23 +87,21 @@ export default function EditContactScreen() {
       isBlocked: isBlocked,
     };
 
-    const result = APIService.updateContact(contact.id, updatedContact);
+    const result = await APIService.updateContact(contact.id, updatedContact);
 
     if (result) {
       Alert.alert('Success', 'Contact updated successfully', [
         {
           text: 'OK',
-          onPress: () => {
-            // Navigate back to contact detail with updated ID
-            router.back();
-          }
-        }
+          onPress: () => router.back(),
+        },
       ]);
     } else {
       Alert.alert('Error', 'Failed to update contact');
     }
   };
 
+  // ✅ Handle Delete
   const handleDelete = () => {
     Alert.alert(
       'Delete Contact',
@@ -109,17 +111,14 @@ export default function EditContactScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            const success = APIService.deleteContact(contact.id);
+          onPress: async () => {
+            const success = await APIService.deleteContact(contact.id);
             if (success) {
               Alert.alert('Deleted', 'Contact has been deleted', [
                 {
                   text: 'OK',
-                  onPress: () => {
-                    // Navigate to contacts list
-                    router.replace('/(tabs)/contacts');
-                  }
-                }
+                  onPress: () => router.replace('/(tabs)/contacts'),
+                },
               ]);
             } else {
               Alert.alert('Error', 'Failed to delete contact');
@@ -252,7 +251,7 @@ export default function EditContactScreen() {
             onPress={() => {
               router.push({
                 pathname: '/(modals)/contact-detail',
-                params: { contactId: contact.id }
+                params: { contactId: contact.id },
               });
             }}
           >
