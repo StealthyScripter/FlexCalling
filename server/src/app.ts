@@ -52,7 +52,7 @@ app.get('/health', (_req: Request, res: Response) => {  // Use _req to indicate 
   });
 });
 
-app.get('/health/db', (req: Request, res: Response) => {
+app.get('/health/db', (_req: Request, res: Response) => {
   try {
     const stats = {
       users: db.getUser('1') ? 1 : 0,
