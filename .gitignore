@@ -6,6 +6,7 @@
 yarn.lock
 /.pnp
 .pnp.js
+**/dist
 
 # testing
 /coverage
@@ -64,3 +65,8 @@ Thumbs.db
 # Testing
 coverage/
 .nyc_output/
+
+#Docker volumes
+**postgres_data/
+
+local

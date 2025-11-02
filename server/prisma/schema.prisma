@@ -1,0 +1,77 @@
+// Prisma schema for FlexCalling
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  email     String   @unique
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts    Contact[]
+  callHistory CallHistory[]
+
+  @@map("users")
+}
+
+model Contact {
+  id           String    @id @default(uuid())
+  name         String
+  phone        String
+  email        String?
+  location     String?
+  favorite     Boolean   @default(false)
+  avatarColor  String
+  isBlocked    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastCallDate DateTime?
+  totalCalls   Int       @default(0)
+  totalDuration Int      @default(0)
+  totalSpent   Float     @default(0)
+
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  callHistory CallHistory[]
+
+  @@unique([userId, phone])
+  @@index([userId])
+  @@map("contacts")
+}
+
+model CallHistory {
+  id            String   @id @default(uuid())
+  callSid       String   @unique
+  from          String
+  to            String
+  direction     String
+  status        String
+  date          DateTime @default(now())
+  startTime     DateTime?
+  endTime       DateTime?
+  duration      Int      @default(0)
+  cost          Float    @default(0)
+  ratePerMinute Float
+  location      String?
+  recordingUrl  String?
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, date])
+  @@index([contactId])
+  @@map("call_history")
+}

@@ -23,7 +23,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     const callResponse = await twilioService.makeCall({ to, from });
 
-    return res.json({  // ADD return
+    return res.json({
       success: true,
       data: callResponse,
     });
@@ -40,14 +40,14 @@ router.post('/', async (req: Request, res: Response) => {
  * GET /api/calls/history
  * Get call history for user
  */
-router.get('/history', (req: Request, res: Response) => {
+router.get('/history', async (req: Request, res: Response) => {
   try {
     const userId = req.query.userId as string || '1';
     const limit = parseInt(req.query.limit as string) || 50;
 
-    const history = db.getCallHistory(userId, limit);
+    const history = await db.getCallHistory(userId, limit);
 
-    return res.json({  // ADD return
+    return res.json({
       success: true,
       data: history,
     });
@@ -64,14 +64,14 @@ router.get('/history', (req: Request, res: Response) => {
  * GET /api/calls/history/contact/:phone
  * Get call history for specific contact
  */
-router.get('/history/contact/:phone', (req: Request, res: Response) => {
+router.get('/history/contact/:phone', async (req: Request, res: Response) => {
   try {
     const userId = req.query.userId as string || '1';
     const { phone } = req.params;
 
-    const history = db.getCallHistoryForContact(userId, phone);
+    const history = await db.getCallHistoryForContact(userId, phone);
 
-    return res.json({  // ADD return
+    return res.json({
       success: true,
       data: history,
     });
@@ -88,10 +88,10 @@ router.get('/history/contact/:phone', (req: Request, res: Response) => {
  * POST /api/calls/history
  * Save call history record
  */
-router.post('/history', (req: Request, res: Response) => {
+router.post('/history', async (req: Request, res: Response) => {
   try {
     const userId = req.query.userId as string || '1';
-    const user = db.getUser(userId);
+    const user = await db.getUser(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -110,21 +110,21 @@ router.post('/history', (req: Request, res: Response) => {
 
     // Enrich with contact name if available
     const contactPhone = recordData.direction === 'outgoing' ? recordData.to : recordData.from;
-    const contact = db.getContactByPhone(userId, contactPhone);
+    const contact = await db.getContactByPhone(userId, contactPhone);
     if (contact) {
       recordData.contactName = contact.name;
       recordData.contactId = contact.id;
     }
 
-    const record = db.createCallRecord(recordData);
+    const record = await db.createCallRecord(recordData);
 
     // Deduct call cost from user balance
     if (recordData.status === 'completed' && recordData.cost > 0) {
       const newBalance = user.balance - recordData.cost;
-      db.updateUserBalance(userId, Math.max(0, newBalance));
+      await db.updateUserBalance(userId, Math.max(0, newBalance));
     }
 
-    return res.status(201).json({  // ADD return
+    return res.status(201).json({
       success: true,
       data: record,
     });
@@ -146,7 +146,7 @@ router.get('/pricing/:phoneNumber', (req: Request, res: Response) => {
     const { phoneNumber } = req.params;
     const rate = twilioService.getRateForDestination(phoneNumber);
 
-    return res.json({  // ADD return
+    return res.json({
       success: true,
       data: {
         phoneNumber,

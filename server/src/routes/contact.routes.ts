@@ -8,18 +8,18 @@ const router = Router();
  * GET /api/contacts
  * Get all contacts for user
  */
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const userId = req.query.userId as string || '1';
-    const contacts = db.getContacts(userId);
+    const contacts = await db.getContacts(userId);
 
-    return res.json({  // ADD return here
+    return res.json({
       success: true,
       data: contacts,
     });
   } catch (error) {
     console.error('Error fetching contacts:', error);
-    return res.status(500).json({  // ADD return here
+    return res.status(500).json({
       success: false,
       error: 'Failed to fetch contacts',
     });
@@ -30,12 +30,12 @@ router.get('/', (req: Request, res: Response) => {
  * GET /api/contacts/:contactId
  * Get specific contact
  */
-router.get('/:contactId', (req: Request, res: Response) => {
+router.get('/:contactId', async (req: Request, res: Response) => {
   try {
     const userId = req.query.userId as string || '1';
     const { contactId } = req.params;
 
-    const contact = db.getContact(userId, contactId);
+    const contact = await db.getContact(userId, contactId);
 
     if (!contact) {
       return res.status(404).json({
@@ -44,13 +44,13 @@ router.get('/:contactId', (req: Request, res: Response) => {
       });
     }
 
-    return res.json({  // ADD return here
+    return res.json({
       success: true,
       data: contact,
     });
   } catch (error) {
     console.error('Error fetching contact:', error);
-    return res.status(500).json({  // ADD return here
+    return res.status(500).json({
       success: false,
       error: 'Failed to fetch contact',
     });
@@ -61,7 +61,7 @@ router.get('/:contactId', (req: Request, res: Response) => {
  * POST /api/contacts
  * Create new contact
  */
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const userId = req.query.userId as string || '1';
     const contactData: Contact = {
@@ -70,15 +70,15 @@ router.post('/', (req: Request, res: Response) => {
       updatedAt: new Date(),
     };
 
-    const contact = db.createContact(userId, contactData);
+    const contact = await db.createContact(userId, contactData);
 
-    return res.status(201).json({  // ADD return here
+    return res.status(201).json({
       success: true,
       data: contact,
     });
   } catch (error) {
     console.error('Error creating contact:', error);
-    return res.status(500).json({  // ADD return here
+    return res.status(500).json({
       success: false,
       error: 'Failed to create contact',
     });
@@ -89,13 +89,13 @@ router.post('/', (req: Request, res: Response) => {
  * PUT /api/contacts/:contactId
  * Update contact
  */
-router.put('/:contactId', (req: Request, res: Response) => {
+router.put('/:contactId', async (req: Request, res: Response) => {
   try {
     const userId = req.query.userId as string || '1';
     const { contactId } = req.params;
     const updates = req.body;
 
-    const contact = db.updateContact(userId, contactId, updates);
+    const contact = await db.updateContact(userId, contactId, updates);
 
     if (!contact) {
       return res.status(404).json({
@@ -104,13 +104,13 @@ router.put('/:contactId', (req: Request, res: Response) => {
       });
     }
 
-    return res.json({  // ADD return here
+    return res.json({
       success: true,
       data: contact,
     });
   } catch (error) {
     console.error('Error updating contact:', error);
-    return res.status(500).json({  // ADD return here
+    return res.status(500).json({
       success: false,
       error: 'Failed to update contact',
     });
@@ -121,12 +121,12 @@ router.put('/:contactId', (req: Request, res: Response) => {
  * DELETE /api/contacts/:contactId
  * Delete contact
  */
-router.delete('/:contactId', (req: Request, res: Response) => {
+router.delete('/:contactId', async (req: Request, res: Response) => {
   try {
     const userId = req.query.userId as string || '1';
     const { contactId } = req.params;
 
-    const success = db.deleteContact(userId, contactId);
+    const success = await db.deleteContact(userId, contactId);
 
     if (!success) {
       return res.status(404).json({
@@ -135,13 +135,13 @@ router.delete('/:contactId', (req: Request, res: Response) => {
       });
     }
 
-    return res.json({  // ADD return here
+    return res.json({
       success: true,
       message: 'Contact deleted successfully',
     });
   } catch (error) {
     console.error('Error deleting contact:', error);
-    return res.status(500).json({  // ADD return here
+    return res.status(500).json({
       success: false,
       error: 'Failed to delete contact',
     });

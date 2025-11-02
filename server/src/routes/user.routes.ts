@@ -7,10 +7,10 @@ const router = Router();
  * GET /api/users/:userId
  * Get user profile
  */
-router.get('/:userId', (req: Request, res: Response) => {
+router.get('/:userId', async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
-    const user = db.getUser(userId);
+    const user = await db.getUser(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -19,13 +19,13 @@ router.get('/:userId', (req: Request, res: Response) => {
       });
     }
 
-    return res.json({  // ADD return here
+    return res.json({
       success: true,
       data: user,
     });
   } catch (error) {
     console.error('Error fetching user:', error);
-    return res.status(500).json({  // ADD return here
+    return res.status(500).json({
       success: false,
       error: 'Failed to fetch user',
     });
@@ -36,12 +36,12 @@ router.get('/:userId', (req: Request, res: Response) => {
  * PUT /api/users/:userId
  * Update user profile
  */
-router.put('/:userId', (req: Request, res: Response) => {
+router.put('/:userId', async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const updates = req.body;
 
-    const user = db.updateUser(userId, updates);
+    const user = await db.updateUser(userId, updates);
 
     if (!user) {
       return res.status(404).json({
@@ -50,13 +50,13 @@ router.put('/:userId', (req: Request, res: Response) => {
       });
     }
 
-    return res.json({  // ADD return here
+    return res.json({
       success: true,
       data: user,
     });
   } catch (error) {
     console.error('Error updating user:', error);
-    return res.status(500).json({  // ADD return here
+    return res.status(500).json({
       success: false,
       error: 'Failed to update user',
     });
@@ -67,7 +67,7 @@ router.put('/:userId', (req: Request, res: Response) => {
  * PUT /api/users/:userId/balance
  * Update user balance
  */
-router.put('/:userId/balance', (req: Request, res: Response) => {
+router.put('/:userId/balance', async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const { balance } = req.body;
@@ -79,7 +79,7 @@ router.put('/:userId/balance', (req: Request, res: Response) => {
       });
     }
 
-    const user = db.updateUserBalance(userId, balance);
+    const user = await db.updateUserBalance(userId, balance);
 
     if (!user) {
       return res.status(404).json({
@@ -88,13 +88,13 @@ router.put('/:userId/balance', (req: Request, res: Response) => {
       });
     }
 
-    return res.json({  // ADD return here
+    return res.json({
       success: true,
       data: user,
     });
   } catch (error) {
     console.error('Error updating balance:', error);
-    return res.status(500).json({  // ADD return here
+    return res.status(500).json({
       success: false,
       error: 'Failed to update balance',
     });

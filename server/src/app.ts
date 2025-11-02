@@ -44,7 +44,7 @@ if (config.nodeEnv === 'development') {
 // ============================================
 
 // Health check
-app.get('/health', (_req: Request, res: Response) => {  // Use _req to indicate unused
+app.get('/health', (_req: Request, res: Response) => {
   return res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -52,25 +52,38 @@ app.get('/health', (_req: Request, res: Response) => {  // Use _req to indicate 
   });
 });
 
-app.get('/health/db', (_req: Request, res: Response) => {
+app.get('/health/db', async (_req: Request, res: Response) => {
   try {
-    const stats = {
-      users: db.getUser('1') ? 1 : 0,
-      contacts: db.getContacts('1').length,
-      callLogs: db.getCallHistory('1').length,
-    };
+    const isHealthy = await db.healthCheck();
+
+    if (!isHealthy) {
+      return res.status(503).json({
+        status: 'error',
+        database: 'disconnected',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const user = await db.getUser('1');
+    const contacts = await db.getContacts('1');
+    const callLogs = await db.getCallHistory('1', 10);
 
     return res.json({
       status: 'ok',
       database: 'connected',
-      stats,
+      stats: {
+        users: user ? 1 : 0,
+        contacts: contacts.length,
+        callLogs: callLogs.length,
+      },
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
     return res.status(500).json({
       status: 'error',
-      database: 'disconnected',
+      database: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -83,7 +96,7 @@ app.use('/api/calls', callRoutes);
 app.use('/api/voice', voiceRoutes);
 
 // 404 handler
-app.use((_req: Request, res: Response) => {  // Use _req to indicate unused
+app.use((_req: Request, res: Response) => {
   return res.status(404).json({
     success: false,
     error: 'Route not found',
@@ -91,7 +104,7 @@ app.use((_req: Request, res: Response) => {  // Use _req to indicate unused
 });
 
 // Error handler
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {  // Use _ prefix
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Error:', err);
 
   return res.status(500).json({

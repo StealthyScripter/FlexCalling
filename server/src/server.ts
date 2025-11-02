@@ -4,51 +4,73 @@ import { db } from './services/database.service';
 
 const PORT = config.port;
 
-// Verify database on startup
-function verifyDatabase() {
+// Initialize database and start server
+async function startServer() {
   try {
-    const user = db.getUser('1');
-    const contacts = db.getContacts('1');
+    // Connect to database
+    console.log('🔌 Connecting to database...');
+    await db.connect();
 
-    console.log('🔍 Database Verification:');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`✅ User loaded: ${user?.name || 'None'}`);
-    console.log(`✅ Contacts loaded: ${contacts.length}`);
-    console.log('✅ Database is operational');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━\n');
+    // Verify database
+    await verifyDatabase();
+
+    // Start Express server
+    app.listen(PORT, () => {
+      console.log('\n🚀 FlexCalling Backend Server');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`📡 Server running on port ${PORT}`);
+      console.log(`🌍 Environment: ${config.nodeEnv}`);
+      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('\n📚 Available endpoints:');
+      console.log('  GET  /api/token');
+      console.log('  GET  /api/users/:userId');
+      console.log('  GET  /api/contacts');
+      console.log('  GET  /api/calls/history');
+      console.log('  POST /api/calls');
+      console.log('  POST /api/voice/twiml');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    });
   } catch (error) {
-    console.error('❌ Database verification failed:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 }
 
-app.listen(PORT, () => {
-  console.log('🚀 FlexCalling Backend Server');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`📡 Server running on port ${PORT}`);
-  console.log(`🌍 Environment: ${config.nodeEnv}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('\n📚 Available endpoints:');
-  console.log('  GET  /api/token');
-  console.log('  GET  /api/users/:userId');
-  console.log('  GET  /api/contacts');
-  console.log('  GET  /api/calls/history');
-  console.log('  POST /api/calls');
-  console.log('  POST /api/voice/twiml');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+// Verify database connection
+async function verifyDatabase() {
+  try {
+    const user = await db.getUser('1');
+    const contacts = await db.getContacts('1');
 
-  // Verify database after server starts
-  verifyDatabase();
-});
+    console.log('\n🔍 Database Verification:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`✅ User loaded: ${user?.name || 'None'}`);
+    console.log(`✅ Contacts loaded: ${contacts.length}`);
+    console.log('✅ Database is operational');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━');
+  } catch (error) {
+    console.error('❌ Database verification failed:', error);
+    throw error;
+  }
+}
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  process.exit(0);
-});
+async function gracefulShutdown(signal: string) {
+  console.log(`\n${signal} signal received: closing server gracefully`);
 
-process.on('SIGINT', () => {
-  console.log('SIGINT signal received: closing HTTP server');
-  process.exit(0);
-});
+  try {
+    await db.disconnect();
+    console.log('✅ Database connection closed');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error during shutdown:', error);
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Start the server
+startServer();
