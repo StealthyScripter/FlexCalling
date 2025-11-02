@@ -5,7 +5,7 @@ import {
   ConnectOptions,
   AudioDevice,
   CallConnectedEvent,
-} from '@/types/twilio';
+} from '@/types/index';
 
 interface CallContextType {
   // State

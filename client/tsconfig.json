@@ -5,11 +5,15 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+    "jsx": "react-jsx",
+    "moduleResolution": "nodenext",
+    "module": "node16",
     "paths": {
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "types": ["react","react-native","jest"]
   },
   "include": [
     "**/*.ts",
