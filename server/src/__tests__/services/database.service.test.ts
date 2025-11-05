@@ -18,6 +18,8 @@ describe('DatabaseService', () => {
         balance: 25.0,
         createdAt: new Date(),
         updatedAt: new Date(),
+        isVerified: true,
+        password: 'password123'
       };
 
       const created = await db.createUser(newUser);

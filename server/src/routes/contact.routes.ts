@@ -1,38 +1,41 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../services/database.service';
+import { authenticate } from '../middleware/auth.middleware';
+import { createContactValidation, updateContactValidation } from '../middleware/validation.middleware';
+import { contactLimiter } from '../middleware/rateLimiting.middleware';
+import { asyncHandler } from '../middleware/error.middleware';
+import { logger } from '../services/logger.service';
 import type { Contact } from '../types';
 
 const router = Router();
 
 /**
  * GET /api/contacts
- * Get all contacts for user
+ * Get all contacts for authenticated user
  */
-router.get('/', async (req: Request, res: Response) => {
-  try {
-    const userId = req.query.userId as string || '1';
+router.get(
+  '/',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.userId!;
     const contacts = await db.getContacts(userId);
 
     return res.json({
       success: true,
       data: contacts,
     });
-  } catch (error) {
-    console.error('Error fetching contacts:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch contacts',
-    });
-  }
-});
+  })
+);
 
 /**
  * GET /api/contacts/:contactId
  * Get specific contact
  */
-router.get('/:contactId', async (req: Request, res: Response) => {
-  try {
-    const userId = req.query.userId as string || '1';
+router.get(
+  '/:contactId',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.userId!;
     const { contactId } = req.params;
 
     const contact = await db.getContact(userId, contactId);
@@ -48,22 +51,20 @@ router.get('/:contactId', async (req: Request, res: Response) => {
       success: true,
       data: contact,
     });
-  } catch (error) {
-    console.error('Error fetching contact:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch contact',
-    });
-  }
-});
+  })
+);
 
 /**
  * POST /api/contacts
  * Create new contact
  */
-router.post('/', async (req: Request, res: Response) => {
-  try {
-    const userId = req.query.userId as string || '1';
+router.post(
+  '/',
+  authenticate,
+  contactLimiter,
+  createContactValidation,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.userId!;
     const contactData: Contact = {
       ...req.body,
       createdAt: new Date(),
@@ -72,26 +73,26 @@ router.post('/', async (req: Request, res: Response) => {
 
     const contact = await db.createContact(userId, contactData);
 
+    logger.info('Contact created', { userId, contactId: contact.id });
+
     return res.status(201).json({
       success: true,
       data: contact,
     });
-  } catch (error) {
-    console.error('Error creating contact:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to create contact',
-    });
-  }
-});
+  })
+);
 
 /**
  * PUT /api/contacts/:contactId
  * Update contact
  */
-router.put('/:contactId', async (req: Request, res: Response) => {
-  try {
-    const userId = req.query.userId as string || '1';
+router.put(
+  '/:contactId',
+  authenticate,
+  contactLimiter,
+  updateContactValidation,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.userId!;
     const { contactId } = req.params;
     const updates = req.body;
 
@@ -104,26 +105,25 @@ router.put('/:contactId', async (req: Request, res: Response) => {
       });
     }
 
+    logger.info('Contact updated', { userId, contactId });
+
     return res.json({
       success: true,
       data: contact,
     });
-  } catch (error) {
-    console.error('Error updating contact:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to update contact',
-    });
-  }
-});
+  })
+);
 
 /**
  * DELETE /api/contacts/:contactId
  * Delete contact
  */
-router.delete('/:contactId', async (req: Request, res: Response) => {
-  try {
-    const userId = req.query.userId as string || '1';
+router.delete(
+  '/:contactId',
+  authenticate,
+  contactLimiter,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.userId!;
     const { contactId } = req.params;
 
     const success = await db.deleteContact(userId, contactId);
@@ -135,17 +135,13 @@ router.delete('/:contactId', async (req: Request, res: Response) => {
       });
     }
 
+    logger.info('Contact deleted', { userId, contactId });
+
     return res.json({
       success: true,
       message: 'Contact deleted successfully',
     });
-  } catch (error) {
-    console.error('Error deleting contact:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to delete contact',
-    });
-  }
-});
+  })
+);
 
 export default router;

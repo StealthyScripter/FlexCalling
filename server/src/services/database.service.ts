@@ -41,27 +41,37 @@ class DatabaseService {
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
-    return user;
+    return user as User | null;
   }
 
   async getUserByPhone(phone: string): Promise<User | null> {
-    return await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { phone },
     });
+    return user as User | null;
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+    return user as User | null;
   }
 
   async createUser(userData: Omit<User, 'createdAt' | 'updatedAt'>): Promise<User> {
-    return await prisma.user.create({
+    const user = await prisma.user.create({
       data: userData,
     });
+    return user as User;
   }
 
   async updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
     try {
-      return await prisma.user.update({
+      const user = await prisma.user.update({
         where: { id: userId },
         data: updates,
       });
+      return user as User;
     } catch (error) {
       return null;
     }
@@ -298,7 +308,9 @@ class DatabaseService {
           name: 'James Doe',
           phone: '+19191234567',
           email: 'james.doe@example.com',
+          password: '$2b$10$placeholder',
           balance: 25.0,
+          isVerified: false,
         },
       });
 

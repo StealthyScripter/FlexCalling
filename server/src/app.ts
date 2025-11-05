@@ -1,11 +1,17 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { config, validateConfig } from './config';
 import { db } from './services/database.service';
+import { logger } from './services/logger.service';
+
+// Import middleware
+import { apiLimiter } from './middleware/rateLimiting.middleware';
+import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 
 // Import routes
+import authRoutes from './routes/auth.routes';
 import tokenRoutes from './routes/token.routes';
 import userRoutes from './routes/user.routes';
 import contactRoutes from './routes/contact.routes';
@@ -26,8 +32,8 @@ app.use(helmet());
 
 // CORS
 app.use(cors({
-  origin: config.nodeEnv === 'development' ? '*' : ['http://localhost:8081'],
-  credentials: true,
+  origin: config.cors.origin,
+  credentials: config.cors.credentials,
 }));
 
 // Body parsing
@@ -37,13 +43,25 @@ app.use(express.urlencoded({ extended: true }));
 // Logging
 if (config.nodeEnv === 'development') {
   app.use(morgan('dev'));
+} else {
+  // Use winston logger for production
+  app.use(morgan('combined', {
+    stream: {
+      write: (message: string) => logger.info(message.trim()),
+    },
+  }));
+}
+
+// Rate limiting (apply to all routes)
+if (config.rateLimiting.enabled) {
+  app.use('/api/', apiLimiter);
 }
 
 // ============================================
 // ROUTES
 // ============================================
 
-// Health check
+// Health check (no auth required)
 app.get('/health', (_req: Request, res: Response) => {
   return res.json({
     status: 'ok',
@@ -64,21 +82,13 @@ app.get('/health/db', async (_req: Request, res: Response) => {
       });
     }
 
-    const user = await db.getUser('1');
-    const contacts = await db.getContacts('1');
-    const callLogs = await db.getCallHistory('1', 10);
-
     return res.json({
       status: 'ok',
       database: 'connected',
-      stats: {
-        users: user ? 1 : 0,
-        contacts: contacts.length,
-        callLogs: callLogs.length,
-      },
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    logger.error('Health check failed:', error);
     return res.status(500).json({
       status: 'error',
       database: 'error',
@@ -89,6 +99,7 @@ app.get('/health/db', async (_req: Request, res: Response) => {
 });
 
 // API routes
+app.use('/api/auth', authRoutes);
 app.use('/api/token', tokenRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/contacts', contactRoutes);
@@ -96,21 +107,9 @@ app.use('/api/calls', callRoutes);
 app.use('/api/voice', voiceRoutes);
 
 // 404 handler
-app.use((_req: Request, res: Response) => {
-  return res.status(404).json({
-    success: false,
-    error: 'Route not found',
-  });
-});
+app.use(notFoundHandler);
 
-// Error handler
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Error:', err);
-
-  return res.status(500).json({
-    success: false,
-    error: config.nodeEnv === 'development' ? err.message : 'Internal server error',
-  });
-});
+// Error handler (must be last)
+app.use(errorHandler);
 
 export default app;

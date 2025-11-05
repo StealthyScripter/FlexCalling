@@ -22,10 +22,8 @@
     "test:watch": "jest --watch --runInBand",
     "test:coverage": "jest --coverage --runInBand",
     "test:verbose": "jest --verbose --runInBand",
-
     "test:services": "jest --testMatch='**/__tests__/services/**/*.test.ts' --runInBand",
     "test:routes": "jest --testMatch='**/__tests__/routes/**/*.test.ts' --runInBand",
-
     "test:user": "jest user.routes.test.ts --runInBand",
     "test:contact": "jest contact.routes.test.ts --runInBand",
     "test:call": "jest call.routes.test.ts --runInBand",
@@ -34,7 +32,6 @@
     "test:database": "jest database.service.test.ts --runInBand",
     "test:twilio": "jest twilio.service.test.ts --runInBand",
     "test:integration": "jest --testMatch='**/__tests__/integration/**/*.test.ts' --runInBand",
-
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand --no-cache"
   },
   "prisma": {
@@ -49,19 +46,27 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^5.7.1",
+    "@prisma/client": "^6.18.0",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.3.0",
     "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "libphonenumber-js": "^1.12.25",
     "morgan": "^1.10.0",
     "twilio": "^4.19.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "winston": "^3.18.3"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.19.24",
     "@types/supertest": "^6.0.3",
@@ -70,7 +75,7 @@
     "@typescript-eslint/parser": "^6.13.2",
     "eslint": "^8.55.0",
     "jest": "^30.2.0",
-    "prisma": "^5.7.1",
+    "prisma": "^6.18.0",
     "supertest": "^6.3.3",
     "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",

@@ -3,7 +3,9 @@ export interface User {
   name: string;
   phone: string;
   email: string;
+  password: string;
   balance: number;
+  isVerified: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }

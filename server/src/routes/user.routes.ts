@@ -1,15 +1,32 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../services/database.service';
+import { authenticate } from '../middleware/auth.middleware';
+import { userIdParamValidation, updateBalanceValidation } from '../middleware/validation.middleware';
+import { asyncHandler } from '../middleware/error.middleware';
+import { logger } from '../services/logger.service';
 
 const router = Router();
 
 /**
  * GET /api/users/:userId
- * Get user profile
+ * Get user profile (protected)
  */
-router.get('/:userId', async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/:userId',
+  authenticate,
+  userIdParamValidation,
+  asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.params;
+
+    // Users can only access their own profile
+    if (userId !== req.userId) {
+      logger.warn('Unauthorized access attempt', { requestedUserId: userId, actualUserId: req.userId });
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+      });
+    }
+
     const user = await db.getUser(userId);
 
     if (!user) {
@@ -19,27 +36,45 @@ router.get('/:userId', async (req: Request, res: Response) => {
       });
     }
 
+    // Remove password from response
+    const { password, ...userWithoutPassword } = user;
+
     return res.json({
       success: true,
-      data: user,
+      data: userWithoutPassword,
     });
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch user',
-    });
-  }
-});
+  })
+);
 
 /**
  * PUT /api/users/:userId
- * Update user profile
+ * Update user profile (protected)
  */
-router.put('/:userId', async (req: Request, res: Response) => {
-  try {
+router.put(
+  '/:userId',
+  authenticate,
+  userIdParamValidation,
+  asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.params;
+
+    // Users can only update their own profile
+    if (userId !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+      });
+    }
+
     const updates = req.body;
+
+    // Prevent updating sensitive fields
+    delete updates.id;
+    delete updates.password;
+    delete updates.email;
+    delete updates.phone;
+    delete updates.balance;
+    delete updates.createdAt;
+    delete updates.updatedAt;
 
     const user = await db.updateUser(userId, updates);
 
@@ -50,32 +85,35 @@ router.put('/:userId', async (req: Request, res: Response) => {
       });
     }
 
+    logger.info('User profile updated', { userId });
+
+    const { password, ...userWithoutPassword } = user;
+
     return res.json({
       success: true,
-      data: user,
+      data: userWithoutPassword,
     });
-  } catch (error) {
-    console.error('Error updating user:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to update user',
-    });
-  }
-});
+  })
+);
 
 /**
  * PUT /api/users/:userId/balance
- * Update user balance
+ * Update user balance (protected - admin only in future)
  */
-router.put('/:userId/balance', async (req: Request, res: Response) => {
-  try {
+router.put(
+  '/:userId/balance',
+  authenticate,
+  updateBalanceValidation,
+  asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.params;
     const { balance } = req.body;
 
-    if (typeof balance !== 'number' || balance < 0) {
-      return res.status(400).json({
+    // Users can only update their own balance (for now)
+    // TODO: Add admin role check
+    if (userId !== req.userId) {
+      return res.status(403).json({
         success: false,
-        error: 'Invalid balance value',
+        error: 'Access denied',
       });
     }
 
@@ -88,17 +126,15 @@ router.put('/:userId/balance', async (req: Request, res: Response) => {
       });
     }
 
+    logger.info('User balance updated', { userId, newBalance: balance });
+
+    const { password, ...userWithoutPassword } = user;
+
     return res.json({
       success: true,
-      data: user,
+      data: userWithoutPassword,
     });
-  } catch (error) {
-    console.error('Error updating balance:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to update balance',
-    });
-  }
-});
+  })
+);
 
 export default router;

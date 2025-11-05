@@ -1,9 +1,13 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main(): Promise<void> {
   console.log('🌱 Seeding database...');
+
+  // Hash password for seed user
+  const hashedPassword = await bcrypt.hash('password123', 10);
 
   // Create default user
   const user = await prisma.user.upsert({
@@ -14,7 +18,9 @@ async function main(): Promise<void> {
       name: 'James Doe',
       phone: '+19191234567',
       email: 'james.doe@example.com',
+      password: hashedPassword,
       balance: 25.0,
+      isVerified: true,
     },
   });
 
@@ -67,6 +73,7 @@ async function main(): Promise<void> {
 main()
   .catch((e) => {
     console.error('❌ Seeding failed:', e);
+    process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();

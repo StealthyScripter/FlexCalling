@@ -1,14 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: 'postgresql://flexcalling:flexcalling_dev_password@localhost:5432/flexcalling_test?schema=public',
-    },
-  },
-});
-
 async function globalSetup() {
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: 'postgresql://flexcalling:flexcalling_dev_password@localhost:5432/flexcalling_test?schema=public',
+      },
+    },
+  });
   console.log('\n🧪 Setting up test database...\n');
 
   try {
@@ -25,6 +24,7 @@ async function globalSetup() {
         phone: '+19191234567',
         email: 'james.doe@example.com',
         balance: 25.0,
+        password: 'password123'
       },
     });
 
