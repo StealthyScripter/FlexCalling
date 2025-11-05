@@ -10,7 +10,7 @@ process.env.TWILIO_TWIML_APP_SID = 'APtest123456789';
 process.env.TWILIO_PHONE_NUMBER = '+19191234567';
 
 import { config, validateConfig } from '../config';
-import { db, prisma } from '../services/database.service';
+import { db } from '../services/database.service';
 
 // Validate configuration
 validateConfig();
@@ -52,27 +52,17 @@ export const mockCallRecord = {
   ratePerMinute: 0.05,
 };
 
-// Setup and teardown for database
+// Setup database connection before all tests in each file
 beforeAll(async () => {
-  // Connect to test database
   await db.connect();
 });
 
+// Disconnect after all tests in each file
 afterAll(async () => {
-  // Clean up and disconnect
-  await prisma.$executeRawUnsafe('TRUNCATE TABLE "users" CASCADE');
   await db.disconnect();
 });
 
-// Clean database between tests (optional, depending on test strategy)
-beforeEach(async () => {
-  // You can implement per-test cleanup if needed
-  // await prisma.callHistory.deleteMany();
-  // await prisma.contact.deleteMany();
-  // await prisma.user.deleteMany();
-});
-
-// Suppress console warnings in tests
+// Suppress console output in tests
 const originalWarn = console.warn;
 const originalLog = console.log;
 

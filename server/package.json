@@ -8,21 +8,34 @@
     "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "lint": "eslint src --ext .ts",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:verbose": "jest --verbose",
-    "test:integration": "jest --testMatch='**/__tests__/integration/**/*.test.ts'",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "ts-node prisma/seed.ts",
     "db:studio": "prisma studio",
-    "test:setup": "chmod +x setup-test-db.sh && ./setup-test-db.sh",
+    "test:db:setup": "DATABASE_URL='postgresql://flexcalling:flexcalling_dev_password@localhost:5432/flexcalling_test?schema=public' prisma migrate deploy",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f postgres"
+    "docker:logs": "docker-compose logs -f postgres",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch --runInBand",
+    "test:coverage": "jest --coverage --runInBand",
+    "test:verbose": "jest --verbose --runInBand",
+
+    "test:services": "jest --testMatch='**/__tests__/services/**/*.test.ts' --runInBand",
+    "test:routes": "jest --testMatch='**/__tests__/routes/**/*.test.ts' --runInBand",
+
+    "test:user": "jest user.routes.test.ts --runInBand",
+    "test:contact": "jest contact.routes.test.ts --runInBand",
+    "test:call": "jest call.routes.test.ts --runInBand",
+    "test:token": "jest token.routes.test.ts --runInBand",
+    "test:voice": "jest voice.routes.test.ts --runInBand",
+    "test:database": "jest database.service.test.ts --runInBand",
+    "test:twilio": "jest twilio.service.test.ts --runInBand",
+    "test:integration": "jest --testMatch='**/__tests__/integration/**/*.test.ts' --runInBand",
+
+    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand --no-cache"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
