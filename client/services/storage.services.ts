@@ -1,12 +1,6 @@
-/**
- * Storage Service
- * Handles all persistent data storage using AsyncStorage and SecureStore
- */
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import type { Contact, User, CallUIData } from '@/types';
-import { secureStorage } from './secure-storage.services';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Storage Keys
 const STORAGE_KEYS = {

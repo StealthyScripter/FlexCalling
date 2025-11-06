@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSContactsUsageDescription": "FlexCalling needs access to your contacts to help you make calls easily."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,6 +21,9 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "READ_CONTACTS"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -27,6 +33,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow FlexCalling to access your contacts to make calls."
+        }
+      ],
       [
         "expo-splash-screen",
         {

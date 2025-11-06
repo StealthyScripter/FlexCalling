@@ -1,5 +1,5 @@
 import { StyleSheet, TextInput, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -10,13 +10,14 @@ import { safeNavigateBack } from '@/utils/navigation';
 
 export default function AddContactScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
   const [isFavorite, setIsFavorite] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState(params.name ? String(params.name).split(' ')[0] : '');
+  const [lastName, setLastName] = useState(params.name ? String(params.name).split(' ').slice(1).join(' ') : '');
+  const [phoneNumber, setPhoneNumber] = useState(params.phone ? String(params.phone) : '');
+  const [email, setEmail] = useState(params.email ? String(params.email) : '');
   const [location, setLocation] = useState('');
 
   const handleCancel = () => {
@@ -37,7 +38,7 @@ export default function AddContactScreen() {
       }
     ]);
   };
-  
+
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.decorativeBlur, { backgroundColor: isDark ? 'rgba(236, 72, 153, 0.15)' : 'rgba(236, 72, 153, 0.1)' }]} />
