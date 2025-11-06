@@ -1,5 +1,5 @@
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureStorage } from './secure-storage.services';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
@@ -55,9 +55,9 @@ export class AuthService {
         throw new Error(result.error || 'Registration failed');
       }
 
-      // Store credentials securely
-      await SecureStore.setItemAsync(this.TOKEN_KEY, result.data.token);
-      await SecureStore.setItemAsync(this.USER_ID_KEY, result.data.user.id);
+      // Store credentials using secure storage service
+      await secureStorage.setItem(this.TOKEN_KEY, result.data.token);
+      await secureStorage.setItem(this.USER_ID_KEY, result.data.user.id);
       await AsyncStorage.setItem(this.USER_DATA_KEY, JSON.stringify(result.data.user));
 
       console.log('✅ User registered successfully');
@@ -87,9 +87,9 @@ export class AuthService {
         throw new Error(result.error || 'Login failed');
       }
 
-      // Store credentials securely
-      await SecureStore.setItemAsync(this.TOKEN_KEY, result.data.token);
-      await SecureStore.setItemAsync(this.USER_ID_KEY, result.data.user.id);
+      // Store credentials using secure storage service
+      await secureStorage.setItem(this.TOKEN_KEY, result.data.token);
+      await secureStorage.setItem(this.USER_ID_KEY, result.data.user.id);
       await AsyncStorage.setItem(this.USER_DATA_KEY, JSON.stringify(result.data.user));
 
       console.log('✅ User logged in successfully');
@@ -105,8 +105,8 @@ export class AuthService {
    */
   static async logout() {
     try {
-      await SecureStore.deleteItemAsync(this.TOKEN_KEY);
-      await SecureStore.deleteItemAsync(this.USER_ID_KEY);
+      await secureStorage.deleteItem(this.TOKEN_KEY);
+      await secureStorage.deleteItem(this.USER_ID_KEY);
       await AsyncStorage.removeItem(this.USER_DATA_KEY);
       console.log('✅ User logged out successfully');
     } catch (error) {
@@ -120,7 +120,7 @@ export class AuthService {
    */
   static async getToken(): Promise<string | null> {
     try {
-      return await SecureStore.getItemAsync(this.TOKEN_KEY);
+      return await secureStorage.getItem(this.TOKEN_KEY);
     } catch (error) {
       console.error('Error getting token:', error);
       return null;
@@ -132,7 +132,7 @@ export class AuthService {
    */
   static async getUserId(): Promise<string | null> {
     try {
-      return await SecureStore.getItemAsync(this.USER_ID_KEY);
+      return await secureStorage.getItem(this.USER_ID_KEY);
     } catch (error) {
       console.error('Error getting user ID:', error);
       return null;
@@ -201,8 +201,8 @@ export class AuthService {
    */
   static async clearAuthData() {
     try {
-      await SecureStore.deleteItemAsync(this.TOKEN_KEY);
-      await SecureStore.deleteItemAsync(this.USER_ID_KEY);
+      await secureStorage.deleteItem(this.TOKEN_KEY);
+      await secureStorage.deleteItem(this.USER_ID_KEY);
       await AsyncStorage.removeItem(this.USER_DATA_KEY);
     } catch (error) {
       console.error('Error clearing auth data:', error);

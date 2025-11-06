@@ -6,6 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import type { Contact, User, CallUIData } from '@/types';
+import { secureStorage } from './secure-storage.services';
 
 // Storage Keys
 const STORAGE_KEYS = {
