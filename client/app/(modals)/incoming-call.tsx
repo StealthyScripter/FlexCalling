@@ -7,7 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useEffect, useState } from 'react';
 import { useCall } from '@/contexts/call-context';
-import { APIService } from '@/services/api.service';
+import { APIService } from '@/services/api.services';
 import { getFirstInitial } from '@/utils';
 
 export default function IncomingCallScreen() {

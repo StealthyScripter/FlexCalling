@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { twilioVoice } from '@/services/mock-twilio.service';
+import { twilioVoice } from '@/services/mock-twilio.services';
 import {
   CallUIData,
   ConnectOptions,

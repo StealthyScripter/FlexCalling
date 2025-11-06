@@ -11,7 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 // Import Contact type from @/types
 import type { Contact } from '@/types';
-import { APIService } from '@/services/api.service';
+import { APIService } from '@/services/api.services';
 import { getFirstInitial } from '@/utils';
 
 export default function ContactsScreen() {

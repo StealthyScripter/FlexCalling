@@ -6,7 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useState, useEffect } from 'react';
-import { APIService } from '@/services/api.service';
+import { APIService } from '@/services/api.services';
 import { useCall } from '@/contexts/call-context';
 
 // Import types and helpers

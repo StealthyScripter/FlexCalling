@@ -1,3 +1,4 @@
+// client/app/index.tsx
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -7,6 +8,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useCall } from '@/contexts/call-context';
+import { AuthService } from '@/services/auth.services';
+import { APIService } from '@/services/api.services';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -16,27 +19,48 @@ export default function SplashScreen() {
 
   useEffect(() => {
     const initialize = async () => {
-      // IMPORTANT: Set to true for testing
-      const isAuthenticated = true; // Changed from false
+      try {
+        console.log('🚀 Initializing FlexCalling...');
 
-      if (isAuthenticated) {
-        // Register device with Twilio
-        try {
-          const token = 'mock-access-token-for-testing'; // Mock token
-          console.log('Registering device with token:', token);
-          await registerDevice(token);
-          console.log('Device registered successfully');
-        } catch (error) {
-          console.error('Failed to register device:', error);
+        // Check if user is authenticated
+        const isAuthenticated = await AuthService.isAuthenticated();
+
+        if (isAuthenticated) {
+          console.log('✅ User is authenticated');
+
+          try {
+            // Initialize API service (syncs with backend)
+            await APIService.initialize();
+
+            // Get access token for Twilio
+            const token = await APIService.getAccessToken();
+            console.log('📞 Registering Twilio device...');
+            await registerDevice(token);
+            console.log('✅ Twilio device registered');
+
+            // Navigate to main app
+            router.replace('/(tabs)');
+          } catch (error) {
+            console.error('❌ Initialization error:', error);
+
+            // If initialization fails, might be due to expired token
+            // Clear auth and redirect to login
+            await AuthService.clearAuthData();
+            router.replace('/(auth)/onboarding');
+          }
+        } else {
+          console.log('ℹ️ User not authenticated, showing onboarding');
+          router.replace('/(auth)/onboarding');
         }
-
-        router.replace('/(tabs)');
-      } else {
+      } catch (error) {
+        console.error('❌ Failed to initialize app:', error);
+        // On error, go to onboarding
         router.replace('/(auth)/onboarding');
       }
     };
 
-    const timer = setTimeout(initialize, 2000);
+    // Add a small delay to show splash screen
+    const timer = setTimeout(initialize, 1500);
     return () => clearTimeout(timer);
   }, [registerDevice, router]);
 
@@ -56,6 +80,8 @@ export default function SplashScreen() {
           <View style={[styles.loadingDot, styles.loadingDotDelay1]} />
           <View style={[styles.loadingDot, styles.loadingDotDelay2]} />
         </View>
+
+        <ThemedText style={styles.loadingText}>Initializing...</ThemedText>
       </BlurView>
     </ThemedView>
   );
@@ -68,8 +94,9 @@ const styles = StyleSheet.create({
   logoContainer: { marginBottom: 24 },
   title: { marginBottom: 8 },
   subtitle: { fontSize: 16, opacity: 0.6, marginBottom: 32 },
-  loadingContainer: { flexDirection: 'row', gap: 8 },
+  loadingContainer: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   loadingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981', opacity: 0.3 },
   loadingDotDelay1: { opacity: 0.6 },
   loadingDotDelay2: { opacity: 1 },
+  loadingText: { fontSize: 14, opacity: 0.5 },
 });

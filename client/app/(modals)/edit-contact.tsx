@@ -7,7 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurView } from 'expo-blur';
 import { useState, useEffect } from 'react';
 import { safeNavigateBack } from '@/utils/navigation';
-import { APIService } from '@/services/api.service';
+import { APIService } from '@/services/api.services';
 import type { Contact } from '@/types';
 import { getInitials } from '@/utils';
 

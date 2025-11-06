@@ -1,5 +1,5 @@
-import { APIService } from '@/services/api.service';
-import { ContactStorage, CallLogStorage } from '@/services/storage.service';
+import { APIService } from '@/services/api.services';
+import { ContactStorage, CallLogStorage } from '@/services/storage.services';
 import { createMockContact, createMockCallLog } from '../setup';
 
 // Mock storage

@@ -1,4 +1,4 @@
-import { StyleSheet, TouchableOpacity, View, ScrollView, Switch } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Switch, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -6,16 +6,75 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/contexts/theme-context';
 import { BlurView } from 'expo-blur';
-import { twilioVoice } from '@/services/mock-twilio.service';
-import { mockDatabase } from '@/services/api.service';
-
-const user = mockDatabase.getCurrentUser();
+import { useState, useEffect } from 'react';
+import { AuthService } from '@/services/auth.services';
 
 export default function AccountScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const { toggleTheme } = useTheme();
   const isDark = colorScheme === 'dark';
+
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const userData = await AuthService.getCurrentUser();
+      setUser(userData);
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    }
+  };
+
+  const handleRefreshProfile = async () => {
+    setIsLoading(true);
+    try {
+      const profile = await AuthService.getProfile();
+      setUser(profile);
+      Alert.alert('Success', 'Profile refreshed successfully');
+    } catch (error) {
+      console.error('Failed to refresh profile:', error);
+      Alert.alert('Error', 'Failed to refresh profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AuthService.logout();
+              Alert.alert('Success', 'You have been signed out', [
+                {
+                  text: 'OK',
+                  onPress: () => router.replace('/(auth)/onboarding'),
+                },
+              ]);
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const menuItems = [
     { icon: 'person.circle.fill' as const, label: 'Edit Profile', chevron: true, route: null },
@@ -28,14 +87,28 @@ export default function AccountScreen() {
     if (route) {
       router.push(route as any);
     } else {
-      console.log(`${label} - Not implemented yet`);
+      Alert.alert('Coming Soon', `${label} feature will be available soon.`);
     }
   };
 
-  const handleTestIncomingCall = () => {
-  twilioVoice.simulateIncomingCall('+254712345678');
-  router.push('/(modals)/incoming-call');
-};
+  if (!user) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.header}>
+          <ThemedText type="title">Account</ThemedText>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ThemedText>Loading...</ThemedText>
+        </View>
+      </ThemedView>
+    );
+  }
+
+  const initials = user.name
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase();
 
   return (
     <ThemedView style={styles.container}>
@@ -44,44 +117,39 @@ export default function AccountScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <ThemedText type="title">Account</ThemedText>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={handleRefreshProfile}
+            disabled={isLoading}
+          >
+            <IconSymbol
+              name="arrow.clockwise"
+              size={24}
+              color={isDark ? '#F1F5F9' : '#111827'}
+            />
+          </TouchableOpacity>
         </View>
-
-        {/* DEV MODE - Test Navigation Banner */}
-        <TouchableOpacity
-          style={styles.devBanner}
-          onPress={handleTestIncomingCall}
-        >
-          <View style={styles.devBannerContent}>
-            <IconSymbol name="wrench.and.screwdriver.fill" size={24} color="#8B5CF6" />
-            <View style={styles.devBannerText}>
-              <ThemedText type="defaultSemiBold" style={{ color: '#8B5CF6' }}>
-                Developer Mode
-              </ThemedText>
-              <ThemedText style={styles.devBannerSubtext}>
-                Test Incoming Call
-              </ThemedText>
-            </View>
-          </View>
-          <IconSymbol name="chevron.right" size={20} color="#8B5CF6" />
-        </TouchableOpacity>
 
         <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.profileCard}>
           <View style={[styles.profileAvatar, { backgroundColor: '#8B5CF6' }]}>
-            <ThemedText style={styles.profileInitial}>
-              {user?.name.split(' ').map(n => n[0]).join('') || 'NA'}
-              </ThemedText>
+            <ThemedText style={styles.profileInitial}>{initials}</ThemedText>
           </View>
-          <ThemedText type="title" style={styles.profileName}>{user?.name || 'No Name'}</ThemedText>
-          <ThemedText style={styles.profilePhone}>{user?.phone || 'No Phone'}</ThemedText>
-          <ThemedText>
-            {user?.email || 'No Email'}
-          </ThemedText>
+          <ThemedText type="title" style={styles.profileName}>{user.name}</ThemedText>
+          <ThemedText style={styles.profilePhone}>{user.phone}</ThemedText>
+          <ThemedText style={styles.profileEmail}>{user.email}</ThemedText>
+
+          {!user.isVerified && (
+            <View style={styles.verificationBadge}>
+              <IconSymbol name="exclamationmark.triangle.fill" size={14} color="#F59E0B" />
+              <ThemedText style={styles.verificationText}>Account not verified</ThemedText>
+            </View>
+          )}
         </BlurView>
 
         <BlurView intensity={isDark ? 20 : 60} tint={colorScheme} style={styles.balanceCard}>
           <ThemedText style={styles.balanceLabel}>Account Balance</ThemedText>
           <ThemedText type="title" style={styles.balanceAmount}>
-            ${user?.balance.toFixed(2) || '0.00'}
+            ${user.balance?.toFixed(2) || '0.00'}
           </ThemedText>
           <TouchableOpacity style={styles.topUpButton}>
             <ThemedText style={styles.topUpText}>Top Up</ThemedText>
@@ -119,7 +187,7 @@ export default function AccountScreen() {
           ))}
         </BlurView>
 
-        <TouchableOpacity style={styles.signOutButton}>
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <IconSymbol name="arrow.right.square.fill" size={20} color="#EF4444" />
           <ThemedText style={styles.signOutText}>Sign Out</ThemedText>
         </TouchableOpacity>
@@ -134,16 +202,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 60 },
   decorativeBlur: { position: 'absolute', width: 280, height: 280, borderRadius: 200, top: -100, right: -80, opacity: 0.6 },
   blur1: {},
-  header: { paddingHorizontal: 20, marginBottom: 24 },
-  devBanner: { marginHorizontal: 20, marginBottom: 16, borderRadius: 20, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(139, 92, 246, 0.15)', borderWidth: 2, borderColor: '#8B5CF6', borderStyle: 'dashed' },
-  devBannerContent: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  devBannerText: { flex: 1 },
-  devBannerSubtext: { fontSize: 12, opacity: 0.7, marginTop: 2, color: '#8B5CF6' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 24 },
+  refreshButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' },
   profileCard: { marginHorizontal: 20, borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', overflow: 'hidden' },
   profileAvatar: { width: 80, height: 80, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   profileInitial: { color: '#fff', fontSize: 32, fontWeight: '600' },
   profileName: { marginBottom: 4 },
-  profilePhone: { fontSize: 14, opacity: 0.6 },
+  profilePhone: { fontSize: 14, opacity: 0.6, marginBottom: 2 },
+  profileEmail: { fontSize: 14, opacity: 0.6 },
+  verificationBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(245, 158, 11, 0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginTop: 12 },
+  verificationText: { fontSize: 12, color: '#F59E0B', fontWeight: '600' },
   balanceCard: { marginHorizontal: 20, borderRadius: 24, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)'},
   balanceLabel: { fontSize: 12, opacity: 0.6, marginBottom: 8, letterSpacing: 1 },
   balanceAmount: { marginTop: 10, marginBottom: 16, fontSize: 36, padding: 5 },

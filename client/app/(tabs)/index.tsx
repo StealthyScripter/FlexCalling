@@ -11,7 +11,7 @@ import { useCall } from '@/contexts/call-context';
 
 // Import types and helpers
 import type { EnrichedCallLog } from '@/types';
-import { APIService } from '@/services/api.service';
+import { APIService } from '@/services/api.services';
 import {
   getCallTypeIcon,
   getCallTypeColor,

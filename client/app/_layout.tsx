@@ -8,7 +8,7 @@ import 'react-native-reanimated';
 import { ThemeProvider as CustomThemeProvider } from '@/contexts/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { CallProvider } from '@/contexts/call-context';
-import { APIService } from '@/services/api.service';
+import { APIService } from '@/services/api.services';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();

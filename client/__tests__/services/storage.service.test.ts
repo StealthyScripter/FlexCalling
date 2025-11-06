@@ -6,7 +6,7 @@ import {
   UserStorage,
   AuthStorage,
   StorageService,
-} from '@/services/storage.service';
+} from '@/services/storage.services';
 import { createMockContact, createMockCallLog, createMockUser } from '../setup';
 import type { CallUIData } from '@/types';
 

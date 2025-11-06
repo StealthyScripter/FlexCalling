@@ -1,3 +1,4 @@
+// client/types/index.ts
 // --------------------------------------------
 // 1. USER & ACCOUNT TYPES
 // --------------------------------------------
@@ -6,7 +7,9 @@ export interface User {
   name: string;
   phone: string;
   email: string;
+  password?: string; // Optional as it shouldn't be exposed to frontend
   balance: number;
+  isVerified: boolean; // Added to match backend
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -23,6 +26,7 @@ export interface Contact {
   favorite: boolean;
   avatarColor: string;
   isBlocked?: boolean;
+  userId?: string; // Added to match backend (optional as frontend may not always need it)
   createdAt?: Date;
   updatedAt?: Date;
   lastCallDate?: Date;
@@ -89,6 +93,7 @@ export interface EnrichedCallLog extends CallUIData {
   contactAvatar?: string;
 }
 
+// Backend call history format
 export interface CallHistoryRecord {
   id: string;
   callSid: string;
@@ -286,4 +291,41 @@ export interface CallStatusUpdate {
   RecordingDuration?: string;
   ErrorCode?: string;
   ErrorMessage?: string;
+}
+
+// --------------------------------------------
+// 11. AUTH TYPES (Frontend specific)
+// --------------------------------------------
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  data: {
+    user: User;
+    token: string;
+  };
+  error?: string;
+}
+
+// --------------------------------------------
+// 12. API RESPONSE WRAPPER (Backend format)
+// --------------------------------------------
+export interface APIResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  errors?: {
+    msg: string;
+    param?: string;
+  }[];
 }
