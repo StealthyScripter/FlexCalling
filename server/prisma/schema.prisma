@@ -1,4 +1,4 @@
-// Prisma schema for FlexCalling
+// server/prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -9,16 +9,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  phone     String   @unique
-  email     String   @unique
-  password  String   // ← Must have this
-  balance   Float    @default(0)
-  isVerified Boolean  @default(false)  // ← Must have this
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String    @id @default(uuid())
+  name             String
+  phone            String    @unique
+  email            String    @unique
+  password         String
+  balance          Float     @default(0)
+  isVerified       Boolean   @default(false)
+  role             UserRole  @default(USER)
+  totalCallDuration Int      @default(0)  // Total minutes of calls
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   contacts    Contact[]
   callHistory CallHistory[]
@@ -64,6 +71,7 @@ model CallHistory {
   duration      Int      @default(0)
   cost          Float    @default(0)
   ratePerMinute Float
+
   location      String?
   recordingUrl  String?
 

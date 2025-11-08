@@ -81,8 +81,218 @@ class DatabaseService {
     return this.updateUser(userId, { balance: newBalance });
   }
 
+  async deleteUser(userId: string): Promise<boolean> {
+    try {
+      await prisma.user.delete({
+        where: { id: userId },
+      });
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   // ============================================
-  // CONTACTS
+  // ADMIN - USER MANAGEMENT
+  // ============================================
+
+  async getAllUsers(options: {
+    skip?: number;
+    take?: number;
+    role?: 'USER' | 'ADMIN';
+    search?: string;
+  }): Promise<{ users: User[]; total: number }> {
+    const { skip = 0, take = 20, role, search } = options;
+
+    const where: any = {};
+
+    if (role) {
+      where.role = role;
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search } },
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return {
+      users: users as User[],
+      total,
+    };
+  }
+
+  async getPlatformStats() {
+    const [
+      totalUsers,
+      totalAdmins,
+      totalCalls,
+      totalRevenue,
+      activeUsersCount,
+    ] = await Promise.all([
+      prisma.user.count({ where: { role: 'USER' } }),
+      prisma.user.count({ where: { role: 'ADMIN' } }),
+      prisma.callHistory.count(),
+      prisma.callHistory.aggregate({
+        _sum: { cost: true },
+      }),
+      prisma.user.count({
+        where: {
+          role: 'USER',
+          balance: { gt: 0 },
+        },
+      }),
+    ]);
+
+    // Get call volume by day (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const recentCalls = await prisma.callHistory.groupBy({
+      by: ['date'],
+      where: {
+        date: { gte: sevenDaysAgo },
+      },
+      _count: true,
+    });
+
+    return {
+      users: {
+        total: totalUsers,
+        admins: totalAdmins,
+        active: activeUsersCount,
+      },
+      calls: {
+        total: totalCalls,
+        recentByDay: recentCalls.map(r => ({
+          date: r.date,
+          count: r._count,
+        })),
+      },
+      revenue: {
+        total: totalRevenue._sum.cost || 0,
+        currency: 'USD',
+      },
+    };
+  }
+
+  async getAllCallHistory(options: {
+    skip?: number;
+    take?: number;
+    userId?: string;
+  }): Promise<{ calls: CallHistoryRecord[]; total: number }> {
+    const { skip = 0, take = 50, userId } = options;
+
+    const where: any = {};
+    if (userId) {
+      where.userId = userId;
+    }
+
+    const [calls, total] = await Promise.all([
+      prisma.callHistory.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+          contact: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        skip,
+        take,
+        orderBy: { date: 'desc' },
+      }),
+      prisma.callHistory.count({ where }),
+    ]);
+
+    return {
+      calls: calls.map((call): CallHistoryRecord => ({
+        id: call.id,
+        callSid: call.callSid,
+        from: call.from,
+        to: call.to,
+        direction: call.direction as 'incoming' | 'outgoing',
+        status: call.status as any,
+        date: call.date,
+        startTime: call.startTime,
+        endTime: call.endTime,
+        duration: call.duration,
+        cost: call.cost,
+        ratePerMinute: call.ratePerMinute,
+        contactName: call.contact?.name,
+        contactId: call.contact?.id,
+        location: call.location || undefined,
+        recordingUrl: call.recordingUrl || undefined,
+      })),
+      total,
+    };
+  }
+
+  async getUserCallStats(userId: string) {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const [totalCalls, completedCalls, totalCost, callsByMonth] = await Promise.all([
+      prisma.callHistory.count({ where: { userId } }),
+      prisma.callHistory.count({
+        where: { userId, status: 'completed' },
+      }),
+      prisma.callHistory.aggregate({
+        where: { userId },
+        _sum: { cost: true },
+      }),
+      prisma.callHistory.groupBy({
+        by: ['date'],
+        where: { userId },
+        _count: true,
+        _sum: { cost: true, duration: true },
+        orderBy: { date: 'desc' },
+        take: 30,
+      }),
+    ]);
+
+    return {
+      totalCalls,
+      completedCalls,
+      totalSpent: totalCost._sum.cost || 0,
+      totalDuration: user.totalCallDuration,
+      averageCallDuration:
+        completedCalls > 0 ? Math.round(user.totalCallDuration / completedCalls) : 0,
+      currentBalance: user.balance,
+      callsByDay: callsByMonth.map(c => ({
+        date: c.date,
+        count: c._count,
+        totalCost: c._sum.cost || 0,
+        totalDuration: c._sum.duration || 0,
+      })),
+    };
+  }
+
+  // ============================================
+  // CONTACTS (unchanged, with user scoping)
   // ============================================
 
   async getContacts(userId: string): Promise<Contact[]> {
@@ -163,7 +373,7 @@ class DatabaseService {
   }
 
   // ============================================
-  // CALL HISTORY
+  // CALL HISTORY (with user scoping)
   // ============================================
 
   async getCallHistory(userId: string, limit: number = 50): Promise<CallHistoryRecord[]> {
@@ -242,7 +452,6 @@ class DatabaseService {
   }
 
   async createCallRecord(recordData: CallHistoryRecord): Promise<CallHistoryRecord> {
-    // Find the user by phone number to get userId
     const user = await this.getUserByPhone(recordData.from) ||
                  await this.getUserByPhone(recordData.to);
 
@@ -284,75 +493,6 @@ class DatabaseService {
       contactName: record.contact?.name,
       contactId: record.contact?.id,
     };
-  }
-
-  // ============================================
-  // SEED DATA
-  // ============================================
-
-  async seedData() {
-    try {
-      // Check if data already exists
-      const existingUser = await prisma.user.findFirst();
-      if (existingUser) {
-        console.log('📊 Database already seeded');
-        return;
-      }
-
-      console.log('🌱 Seeding database...');
-
-      // Create default user
-      const user = await prisma.user.create({
-        data: {
-          id: '1',
-          name: 'James Doe',
-          phone: '+19191234567',
-          email: 'james.doe@example.com',
-          password: '$2b$10$placeholder',
-          balance: 25.0,
-          isVerified: false,
-        },
-      });
-
-      // Create default contacts
-      await prisma.contact.createMany({
-        data: [
-          {
-            id: '1',
-            name: 'Alice Johnson',
-            phone: '+254712345678',
-            email: 'alice@example.com',
-            location: 'Nairobi, Kenya',
-            favorite: true,
-            avatarColor: '#EC4899',
-            userId: user.id,
-          },
-          {
-            id: '2',
-            name: 'Bob Williams',
-            phone: '+254722456789',
-            location: 'Mombasa, Kenya',
-            favorite: false,
-            avatarColor: '#3B82F6',
-            userId: user.id,
-          },
-          {
-            id: '3',
-            name: 'Carol Davis',
-            phone: '+254734564890',
-            location: 'Kisumu, Kenya',
-            favorite: true,
-            avatarColor: '#F59E0B',
-            userId: user.id,
-          },
-        ],
-      });
-
-      console.log('✅ Database seeded successfully');
-    } catch (error) {
-      console.error('❌ Error seeding database:', error);
-      throw error;
-    }
   }
 }
 

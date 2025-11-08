@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { twilioService } from '../services/twilio.service';
 import { db } from '../services/database.service';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, requireUser, requireOwnership } from '../middleware/auth.middleware';
 import { makeCallValidation, callHistoryQueryValidation } from '../middleware/validation.middleware';
 import { callLimiter } from '../middleware/rateLimiting.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
@@ -13,18 +13,19 @@ const router = Router();
 
 /**
  * POST /api/calls
- * Initiate an outbound call (protected)
+ * Initiate an outbound call (USER role only, scoped to authenticated user)
  */
 router.post(
   '/',
   authenticate,
+  requireUser, // Only users can make calls, not admins
   callLimiter,
   makeCallValidation,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId!;
     const { to, from }: MakeCallRequest = req.body;
 
-    // Verify user has sufficient balance
+    // Verify the 'from' number belongs to the authenticated user
     const user = await db.getUser(userId);
     if (!user) {
       return res.status(404).json({
@@ -33,11 +34,31 @@ router.post(
       });
     }
 
+    // Verify user owns the 'from' phone number
+    if (user.phone !== from) {
+      logger.warn('User attempted to use unauthorized phone number', {
+        userId,
+        userPhone: user.phone,
+        requestedFrom: from
+      });
+
+      return res.status(403).json({
+        success: false,
+        error: 'You can only make calls from your registered phone number',
+      });
+    }
+
+    // Check balance
     const estimatedRate = twilioService.getRateForDestination(to);
     const minimumBalance = estimatedRate * 2; // Require balance for at least 2 minutes
 
     if (user.balance < minimumBalance) {
-      logger.warn('Insufficient balance for call', { userId, balance: user.balance, required: minimumBalance });
+      logger.warn('Insufficient balance for call', {
+        userId,
+        balance: user.balance,
+        required: minimumBalance
+      });
+
       return res.status(402).json({
         success: false,
         error: 'Insufficient balance',
@@ -51,7 +72,12 @@ router.post(
 
     const callResponse = await twilioService.makeCall({ to, from });
 
-    logger.info('Call initiated', { userId, callSid: callResponse.callSid, to, from });
+    logger.info('Call initiated', {
+      userId,
+      callSid: callResponse.callSid,
+      to,
+      from
+    });
 
     return res.json({
       success: true,
@@ -62,17 +88,19 @@ router.post(
 
 /**
  * GET /api/calls/history
- * Get call history for authenticated user
+ * Get call history for authenticated user (scoped to their calls only)
  */
 router.get(
   '/history',
   authenticate,
+  requireOwnership, // Admins can view any user's history, users only their own
   callHistoryQueryValidation,
   asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+    // If admin is viewing another user's history
+    const targetUserId = (req.query.userId as string) || req.userId!;
     const limit = parseInt(req.query.limit as string) || 50;
 
-    const history = await db.getCallHistory(userId, limit);
+    const history = await db.getCallHistory(targetUserId, limit);
 
     return res.json({
       success: true,
@@ -83,16 +111,17 @@ router.get(
 
 /**
  * GET /api/calls/history/contact/:phone
- * Get call history for specific contact
+ * Get call history for specific contact (scoped to authenticated user)
  */
 router.get(
   '/history/contact/:phone',
   authenticate,
+  requireOwnership,
   asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.userId!;
+    const targetUserId = (req.query.userId as string) || req.userId!;
     const { phone } = req.params;
 
-    const history = await db.getCallHistoryForContact(userId, phone);
+    const history = await db.getCallHistoryForContact(targetUserId, phone);
 
     return res.json({
       success: true,
@@ -103,11 +132,12 @@ router.get(
 
 /**
  * POST /api/calls/history
- * Save call history record (typically called by webhooks or client)
+ * Save call history record (scoped to authenticated user)
  */
 router.post(
   '/history',
   authenticate,
+  requireUser, // Only users can save call records, not admins
   asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId!;
     const user = await db.getUser(userId);
@@ -116,6 +146,21 @@ router.post(
       return res.status(404).json({
         success: false,
         error: 'User not found',
+      });
+    }
+
+    // Verify the call belongs to this user
+    const callPhone = req.body.from;
+    if (callPhone !== user.phone) {
+      logger.warn('User attempted to save call for another user', {
+        userId,
+        userPhone: user.phone,
+        callPhone
+      });
+
+      return res.status(403).json({
+        success: false,
+        error: 'You can only save your own call records',
       });
     }
 
@@ -137,11 +182,24 @@ router.post(
 
     const record = await db.createCallRecord(recordData);
 
-    // Deduct call cost from user balance
-    if (recordData.status === 'completed' && recordData.cost > 0) {
+    // Update call-related metrics
+    if (recordData.status === 'completed' && recordData.duration > 0) {
+      // Deduct cost from user balance
       const newBalance = user.balance - recordData.cost;
       await db.updateUserBalance(userId, Math.max(0, newBalance));
-      logger.info('Balance deducted', { userId, cost: recordData.cost, newBalance: Math.max(0, newBalance) });
+
+      // Update total call duration (convert seconds to minutes)
+      const durationMinutes = Math.ceil(recordData.duration / 60);
+      const newTotalDuration = user.totalCallDuration + durationMinutes;
+      await db.updateUser(userId, { totalCallDuration: newTotalDuration });
+
+      logger.info('Call metrics updated', {
+        userId,
+        cost: recordData.cost,
+        newBalance: Math.max(0, newBalance),
+        durationMinutes,
+        newTotalDuration,
+      });
     }
 
     logger.info('Call record saved', { userId, callSid: recordData.callSid });
@@ -178,5 +236,25 @@ router.get('/pricing/:phoneNumber', (req: Request, res: Response) => {
     });
   }
 });
+
+/**
+ * GET /api/calls/stats
+ * Get call statistics for authenticated user
+ */
+router.get(
+  '/stats',
+  authenticate,
+  requireOwnership,
+  asyncHandler(async (req: Request, res: Response) => {
+    const targetUserId = (req.query.userId as string) || req.userId!;
+
+    const stats = await db.getUserCallStats(targetUserId);
+
+    return res.json({
+      success: true,
+      data: stats,
+    });
+  })
+);
 
 export default router;

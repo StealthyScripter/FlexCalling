@@ -6,10 +6,11 @@ const prisma = new PrismaClient();
 async function main(): Promise<void> {
   console.log('🌱 Seeding database...');
 
-  // Hash password for seed user
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  // Hash passwords
+  const userPassword = await bcrypt.hash('password123', 10);
+  const adminPassword = await bcrypt.hash('admin123', 10);
 
-  // Create default user
+  // Create default regular user
   const user = await prisma.user.upsert({
     where: { id: '1' },
     update: {},
@@ -18,15 +19,36 @@ async function main(): Promise<void> {
       name: 'James Doe',
       phone: '+19191234567',
       email: 'james.doe@example.com',
-      password: hashedPassword,
+      password: userPassword,
       balance: 25.0,
       isVerified: true,
+      role: 'USER',
+      totalCallDuration: 0,
     },
   });
 
   console.log(`✅ Created user: ${user.name}`);
 
-  // Create default contacts
+  // Create admin user
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@flexcalling.com' },
+    update: {},
+    create: {
+      id: '2',
+      name: 'Admin User',
+      phone: '+19192223333',
+      email: 'admin@flexcalling.com',
+      password: adminPassword,
+      balance: 0, // Admins don't need balance
+      isVerified: true,
+      role: 'ADMIN',
+      totalCallDuration: 0,
+    },
+  });
+
+  console.log(`✅ Created admin: ${admin.name}`);
+
+  // Create default contacts for the regular user
   const contacts = [
     {
       id: '1',
@@ -67,7 +89,16 @@ async function main(): Promise<void> {
   }
 
   console.log(`✅ Created ${contacts.length} contacts`);
-  console.log('🌱 Seeding completed successfully!');
+  console.log('\n📋 Test Credentials:');
+  console.log('━━━━━━━━━━━━━━━━━━━━');
+  console.log('Regular User:');
+  console.log('  Email: james.doe@example.com');
+  console.log('  Password: password123');
+  console.log('\nAdmin User:');
+  console.log('  Email: admin@flexcalling.com');
+  console.log('  Password: admin123');
+  console.log('━━━━━━━━━━━━━━━━━━━━');
+  console.log('\n🌱 Seeding completed successfully!');
 }
 
 main()

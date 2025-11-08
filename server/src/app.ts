@@ -17,6 +17,7 @@ import userRoutes from './routes/user.routes';
 import contactRoutes from './routes/contact.routes';
 import callRoutes from './routes/call.routes';
 import voiceRoutes from './routes/voice.routes';
+import adminRoutes from './routes/admin.routes'; // NEW
 
 // Validate configuration
 validateConfig();
@@ -44,7 +45,6 @@ app.use(express.urlencoded({ extended: true }));
 if (config.nodeEnv === 'development') {
   app.use(morgan('dev'));
 } else {
-  // Use winston logger for production
   app.use(morgan('combined', {
     stream: {
       write: (message: string) => logger.info(message.trim()),
@@ -105,6 +105,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/calls', callRoutes);
 app.use('/api/voice', voiceRoutes);
+app.use('/api/admin', adminRoutes); // NEW - Admin routes
 
 // 404 handler
 app.use(notFoundHandler);

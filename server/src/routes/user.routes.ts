@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../services/database.service';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, requireOwnership } from '../middleware/auth.middleware';
 import { userIdParamValidation, updateBalanceValidation } from '../middleware/validation.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
 import { logger } from '../services/logger.service';
@@ -9,23 +9,15 @@ const router = Router();
 
 /**
  * GET /api/users/:userId
- * Get user profile (protected)
+ * Get user profile (authenticated users can view their own, admins can view any)
  */
 router.get(
   '/:userId',
   authenticate,
   userIdParamValidation,
+  requireOwnership, // Ensures users can only view their own profile, admins can view any
   asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.params;
-
-    // Users can only access their own profile
-    if (userId !== req.userId) {
-      logger.warn('Unauthorized access attempt', { requestedUserId: userId, actualUserId: req.userId });
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied',
-      });
-    }
 
     const user = await db.getUser(userId);
 
@@ -48,31 +40,25 @@ router.get(
 
 /**
  * PUT /api/users/:userId
- * Update user profile (protected)
+ * Update user profile (users can update their own, admins update via admin routes)
  */
 router.put(
   '/:userId',
   authenticate,
   userIdParamValidation,
+  requireOwnership,
   asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.params;
-
-    // Users can only update their own profile
-    if (userId !== req.userId) {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied',
-      });
-    }
-
     const updates = req.body;
 
-    // Prevent updating sensitive fields
+    // Prevent updating sensitive fields via this endpoint
     delete updates.id;
     delete updates.password;
     delete updates.email;
     delete updates.phone;
     delete updates.balance;
+    delete updates.role; // Role can only be changed by admins via admin routes
+    delete updates.totalCallDuration; // This is auto-updated
     delete updates.createdAt;
     delete updates.updatedAt;
 
@@ -85,7 +71,7 @@ router.put(
       });
     }
 
-    logger.info('User profile updated', { userId });
+    logger.info('User profile updated', { userId, updatedBy: req.userId });
 
     const { password, ...userWithoutPassword } = user;
 
@@ -98,23 +84,35 @@ router.put(
 
 /**
  * PUT /api/users/:userId/balance
- * Update user balance (protected - admin only in future)
+ * Update user balance (users can add to their own balance, admins use admin routes)
  */
 router.put(
   '/:userId/balance',
   authenticate,
   updateBalanceValidation,
+  requireOwnership,
   asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.params;
     const { balance } = req.body;
 
-    // Users can only update their own balance (for now)
-    // TODO: Add admin role check
-    if (userId !== req.userId) {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied',
-      });
+    // Regular users can only add to their balance, not set arbitrary amounts
+    // (unless they're adding credits via payment gateway)
+    if (req.userRole !== 'ADMIN') {
+      const currentUser = await db.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      // Only allow increasing balance for regular users
+      if (balance < currentUser.balance) {
+        return res.status(403).json({
+          success: false,
+          error: 'You can only add credits to your balance. Contact support to reduce balance.',
+        });
+      }
     }
 
     const user = await db.updateUserBalance(userId, balance);
@@ -126,13 +124,38 @@ router.put(
       });
     }
 
-    logger.info('User balance updated', { userId, newBalance: balance });
+    logger.info('User balance updated', {
+      userId,
+      newBalance: balance,
+      updatedBy: req.userId
+    });
 
     const { password, ...userWithoutPassword } = user;
 
     return res.json({
       success: true,
       data: userWithoutPassword,
+    });
+  })
+);
+
+/**
+ * GET /api/users/:userId/stats
+ * Get user call statistics
+ */
+router.get(
+  '/:userId/stats',
+  authenticate,
+  userIdParamValidation,
+  requireOwnership,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    const stats = await db.getUserCallStats(userId);
+
+    return res.json({
+      success: true,
+      data: stats,
     });
   })
 );

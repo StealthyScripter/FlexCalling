@@ -1,3 +1,5 @@
+export type UserRole = 'USER' | 'ADMIN';
+
 export interface User {
   id: string;
   name: string;
@@ -6,6 +8,8 @@ export interface User {
   password: string;
   balance: number;
   isVerified: boolean;
+  role: UserRole;
+  totalCallDuration: number; // Total minutes of calls
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -58,7 +62,7 @@ export interface CallHistoryRecord {
   date: Date;
   startTime: Date | null;
   endTime: Date | null;
-  duration: number;
+  duration: number; // in seconds
   cost: number;
   ratePerMinute: number;
   contactName?: string;
@@ -86,4 +90,38 @@ export interface MakeCallResponse {
   to: string;
   dateCreated: Date;
   estimatedCostPerMinute: number;
+}
+
+export interface UserStats {
+  totalCalls: number;
+  completedCalls: number;
+  totalSpent: number;
+  totalDuration: number; // in minutes
+  averageCallDuration: number; // in minutes
+  currentBalance: number;
+  callsByDay: Array<{
+    date: Date;
+    count: number;
+    totalCost: number;
+    totalDuration: number;
+  }>;
+}
+
+export interface PlatformStats {
+  users: {
+    total: number;
+    admins: number;
+    active: number;
+  };
+  calls: {
+    total: number;
+    recentByDay: Array<{
+      date: Date;
+      count: number;
+    }>;
+  };
+  revenue: {
+    total: number;
+    currency: string;
+  };
 }
