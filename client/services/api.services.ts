@@ -1,4 +1,3 @@
-// client/services/api.service.ts
 import type { Contact, User, CallUIData, EnrichedCallLog } from '@/types';
 import {
   ContactStorage,
@@ -8,18 +7,15 @@ import {
 } from './storage.services';
 import { AuthService } from './auth.services';
 
-// Backend API URL
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
-// In-memory cache (for performance and offline support)
 let contacts: Contact[] = [];
 let callLogs: CallUIData[] = [];
 let currentUser: User | null = null;
-
 let isInitialized = false;
 
 // ============================================
-// API CLIENT
+// AUTHENTICATED API CLIENT
 // ============================================
 
 class APIClient {
@@ -48,7 +44,7 @@ class APIClient {
         },
       });
 
-      // Handle 401 Unauthorized - token expired
+      // Handle 401 Unauthorized
       if (response.status === 401) {
         console.warn('⚠️ Authentication failed - clearing auth data');
         await AuthService.clearAuthData();
@@ -69,7 +65,7 @@ class APIClient {
   }
 
   // ============================================
-  // CONTACTS - Now using authenticated endpoints
+  // CONTACTS - Authenticated endpoints
   // ============================================
 
   async getContacts(): Promise<Contact[]> {
@@ -233,7 +229,7 @@ async function initialize(): Promise<void> {
 }
 
 // ============================================
-// EXPORTS - Updated to work with authentication
+// EXPORTS - Works with authentication
 // ============================================
 
 export const APIService = {
@@ -263,7 +259,6 @@ export const APIService = {
       console.log('✅ Contact added and synced:', created.name);
     } catch (error) {
       console.warn('Failed to sync contact with backend:', error);
-      // Fallback to local only
       contacts.push(contact);
       await ContactStorage.save(contacts);
       console.log('✅ Contact added locally (offline):', contact.name);
@@ -285,7 +280,6 @@ export const APIService = {
       return updated;
     } catch (error) {
       console.warn('Failed to sync contact update with backend:', error);
-      // Fallback to local only
       contacts[index] = { ...contacts[index], ...updates };
       await ContactStorage.save(contacts);
       console.log('✅ Contact updated locally (offline)');
@@ -305,7 +299,6 @@ export const APIService = {
       return true;
     } catch (error) {
       console.warn('Failed to sync contact deletion with backend:', error);
-      // Fallback to local only
       contacts.splice(index, 1);
       await ContactStorage.save(contacts);
       console.log('✅ Contact deleted locally (offline)');
@@ -474,7 +467,6 @@ export const mockDatabase = {
       currentUser.balance = newBalance;
       await UserStorage.saveProfile(currentUser);
 
-      // Try to sync with backend
       try {
         await apiClient.updateUserBalance(currentUser.id, newBalance);
       } catch (error) {
@@ -488,7 +480,6 @@ export const mockDatabase = {
       Object.assign(currentUser, updates);
       await UserStorage.saveProfile(currentUser);
 
-      // Try to sync with backend
       try {
         await apiClient.updateUser(currentUser.id, updates);
       } catch (error) {
