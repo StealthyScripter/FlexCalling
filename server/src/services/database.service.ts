@@ -494,6 +494,89 @@ class DatabaseService {
       contactId: record.contact?.id,
     };
   }
+
+/**
+ * Get call record by Twilio CallSid
+ */
+async getCallByCallSid(callSid: string): Promise<CallHistoryRecord | null> {
+  const record = await prisma.callHistory.findUnique({
+    where: { callSid },
+    include: {
+      contact: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!record) return null;
+
+  return {
+    id: record.id,
+    callSid: record.callSid,
+    from: record.from,
+    to: record.to,
+    direction: record.direction as 'incoming' | 'outgoing',
+    status: record.status as any,
+    date: record.date,
+    startTime: record.startTime,
+    endTime: record.endTime,
+    duration: record.duration,
+    cost: record.cost,
+    ratePerMinute: record.ratePerMinute,
+    contactName: record.contact?.name,
+    contactId: record.contact?.id,
+    location: record.location || undefined,
+    recordingUrl: record.recordingUrl || undefined,
+  };
+}
+
+/**
+ * Update call record with final details (from Twilio callback)
+ */
+async updateCallRecord(
+  callSid: string,
+  updates: Partial<Omit<CallHistoryRecord, 'id' | 'callSid'>>
+): Promise<CallHistoryRecord | null> {
+  try {
+    const record = await prisma.callHistory.update({
+      where: { callSid },
+      data: updates,
+      include: {
+        contact: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return {
+      id: record.id,
+      callSid: record.callSid,
+      from: record.from,
+      to: record.to,
+      direction: record.direction as 'incoming' | 'outgoing',
+      status: record.status as any,
+      date: record.date,
+      startTime: record.startTime,
+      endTime: record.endTime,
+      duration: record.duration,
+      cost: record.cost,
+      ratePerMinute: record.ratePerMinute,
+      contactName: record.contact?.name,
+      contactId: record.contact?.id,
+      location: record.location || undefined,
+      recordingUrl: record.recordingUrl || undefined,
+    };
+  } catch (error) {
+    console.error('Error updating call record:', error);
+    return null;
+  }
+}
 }
 
 export const db = new DatabaseService();

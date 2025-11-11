@@ -137,7 +137,7 @@ router.get(
 router.post(
   '/history',
   authenticate,
-  requireUser, // Only users can save call records, not admins
+  requireUser,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = req.userId!;
     const user = await db.getUser(userId);
@@ -164,12 +164,28 @@ router.post(
       });
     }
 
+    // SECURE: Calculate cost server-side, don't trust client
+    const destinationPhone = req.body.to;
+    const durationSeconds = parseInt(req.body.duration) || 0;
+    const ratePerMinute = twilioService.getRateForDestination(destinationPhone);
+    const durationMinutes = durationSeconds / 60;
+    const calculatedCost = Number((durationMinutes * ratePerMinute).toFixed(4));
+
     const recordData: CallHistoryRecord = {
       id: uuidv4(),
-      ...req.body,
+      callSid: req.body.callSid,
+      from: req.body.from,
+      to: req.body.to,
+      direction: req.body.direction,
+      status: req.body.status,
       date: new Date(req.body.date),
       startTime: req.body.startTime ? new Date(req.body.startTime) : null,
       endTime: req.body.endTime ? new Date(req.body.endTime) : null,
+      duration: durationSeconds,
+      cost: calculatedCost,  // ← Use server-calculated cost
+      ratePerMinute: ratePerMinute,  // ← Use server-determined rate
+      location: req.body.location,
+      recordingUrl: req.body.recordingUrl,
     };
 
     // Enrich with contact name if available
@@ -185,8 +201,8 @@ router.post(
     // Update call-related metrics
     if (recordData.status === 'completed' && recordData.duration > 0) {
       // Deduct cost from user balance
-      const newBalance = user.balance - recordData.cost;
-      await db.updateUserBalance(userId, Math.max(0, newBalance));
+      const newBalance = Math.max(0, user.balance - recordData.cost);
+      await db.updateUserBalance(userId, newBalance);
 
       // Update total call duration (convert seconds to minutes)
       const durationMinutes = Math.ceil(recordData.duration / 60);
@@ -196,7 +212,7 @@ router.post(
       logger.info('Call metrics updated', {
         userId,
         cost: recordData.cost,
-        newBalance: Math.max(0, newBalance),
+        newBalance,
         durationMinutes,
         newTotalDuration,
       });

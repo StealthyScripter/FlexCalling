@@ -69,7 +69,10 @@ export class TwilioService {
   /**
    * Make an outbound call
    */
-  async makeCall(params: MakeCallRequest): Promise<MakeCallResponse> {
+  /**
+ * Make an outbound call
+ */
+async makeCall(params: MakeCallRequest): Promise<MakeCallResponse> {
     if (this.isMockMode) {
       return {
         callSid: `CA${Date.now()}`,
@@ -82,10 +85,15 @@ export class TwilioService {
       };
     }
 
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+
     const call = await this.client!.calls.create({
       to: params.to,
       from: params.from,
-      url: `${process.env.BASE_URL || 'http://localhost:3000'}/api/voice/twiml`,
+      url: `${baseUrl}/api/voice/twiml`,
+      statusCallback: `${baseUrl}/api/voice/status`,  // ← ADD THIS
+      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],  // ← ADD THIS
+      statusCallbackMethod: 'POST',  // ← ADD THIS
     });
 
     return {
@@ -98,7 +106,6 @@ export class TwilioService {
       estimatedCostPerMinute: this.getRateForDestination(params.to),
     };
   }
-
   /**
    * Get call details
    */
