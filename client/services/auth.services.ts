@@ -160,6 +160,7 @@ export class AuthService {
       const token = await this.getToken();
       return !!token;
     } catch (error) {
+      console.error('User is not logged in: ', error)
       return false;
     }
   }
