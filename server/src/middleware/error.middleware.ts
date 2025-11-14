@@ -8,7 +8,8 @@ import { config } from '../config';
 export const errorHandler = (
   err: Error,
   req: Request,
-  res: Response
+  res: Response,
+  _next: NextFunction
 ) => {
   // Log error
   logger.error('Error occurred:', {

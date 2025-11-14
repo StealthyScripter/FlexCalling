@@ -4,6 +4,7 @@ import { db } from '../services/database.service';
 import { logger } from '../services/logger.service';
 import type { CallHistoryRecord } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { twilioWebhookAuth } from '../middleware/twilioWebhook.middleware';
 
 const router = Router();
 
@@ -11,7 +12,7 @@ const router = Router();
  * POST /api/voice/twiml
  * Generate TwiML for call handling
  */
-router.post('/twiml', (req: Request, res: Response) => {
+router.post('/twiml', twilioWebhookAuth, (req: Request, res: Response) => {
   try {
     const { To } = req.body;
 
@@ -34,7 +35,7 @@ router.post('/twiml', (req: Request, res: Response) => {
  * Handle call status callbacks from Twilio
  * This is called by Twilio at various stages of the call
  */
-router.post('/status', async (req: Request, res: Response) => {
+router.post('/status', twilioWebhookAuth, async (req: Request, res: Response) => {
   try {
     const {
       CallSid,

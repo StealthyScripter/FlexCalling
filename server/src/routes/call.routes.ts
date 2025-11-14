@@ -198,26 +198,6 @@ router.post(
 
     const record = await db.createCallRecord(recordData);
 
-    // Update call-related metrics
-    if (recordData.status === 'completed' && recordData.duration > 0) {
-      // Deduct cost from user balance
-      const newBalance = Math.max(0, user.balance - recordData.cost);
-      await db.updateUserBalance(userId, newBalance);
-
-      // Update total call duration (convert seconds to minutes)
-      const durationMinutes = Math.ceil(recordData.duration / 60);
-      const newTotalDuration = user.totalCallDuration + durationMinutes;
-      await db.updateUser(userId, { totalCallDuration: newTotalDuration });
-
-      logger.info('Call metrics updated', {
-        userId,
-        cost: recordData.cost,
-        newBalance,
-        durationMinutes,
-        newTotalDuration,
-      });
-    }
-
     logger.info('Call record saved', { userId, callSid: recordData.callSid });
 
     return res.status(201).json({

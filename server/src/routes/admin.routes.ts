@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { db } from '../services/database.service';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import { asyncHandler } from '../middleware/error.middleware';
@@ -13,15 +13,22 @@ router.use(authenticate, requireAdmin);
 /**
  * Validation middleware
  */
-const handleValidationErrors = (req: Request, res: Response, next: Function) => {
+export const handleValidationErrors = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
   const errors = validationResult(req);
+
   if (!errors.isEmpty()) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       errors: errors.array(),
     });
+    return; // stop here, but don't return a value
   }
-  next();
+
+  next(); // success path
 };
 
 /**

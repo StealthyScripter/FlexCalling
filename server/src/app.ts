@@ -30,6 +30,9 @@ const app: Application = express();
 
 // Security
 app.use(helmet());
+app.use(errorHandler);
+app.use(notFoundHandler);
+
 
 // CORS
 app.use(cors({
