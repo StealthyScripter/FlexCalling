@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import type { User, Contact, CallHistoryRecord } from '../types';
+import { logger } from './logger.service';
 
 const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
@@ -573,7 +574,7 @@ async updateCallRecord(
       recordingUrl: record.recordingUrl || undefined,
     };
   } catch (error) {
-    console.error('Error updating call record:', error);
+    logger.error('Error updating call record:', error);
     return null;
   }
 }
